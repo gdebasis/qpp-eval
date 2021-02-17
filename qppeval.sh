@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ $# -lt 1 ]
+if [ $# -lt 2 ]
 then
-	echo "usage: $0 <nwanted (e.g. 50/100)>"
+	echo "usage: $0 <num docs to retrieve (e.g. 100)> <num-top docs for qpp-estimation (e.g. 50)>"
 	exit
 fi
 
@@ -19,6 +19,7 @@ query.file=data/topics.401-450.xml
 res.file=res_
 qrels.file=$QRELS
 retrieve.num_wanted=$1
+qpp.numtopdocs=$2
 EOF1
 
 mvn exec:java@qppeval -Dexec.args="qpp.properties"

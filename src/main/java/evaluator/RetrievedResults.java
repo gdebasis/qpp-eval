@@ -21,12 +21,15 @@ public class RetrievedResults implements Comparable<RetrievedResults> {
         numRelRet = -1;
     }
 
-    public double[] getRSVs() {
-        return ArrayUtils.toPrimitive(
-                rtuples.stream().map(
-                        ResultTuple::getScore).
-                        collect(Collectors.toList()).
-                        toArray(new Double[0]), 0.0);
+    public double[] getRSVs(int k) {
+        return ArrayUtils
+                .toPrimitive(rtuples
+                .stream()
+                .map(ResultTuple::getScore)
+                .collect(Collectors.toList())
+                .subList(0, Math.min(k, rtuples.size()))
+                .toArray(new Double[0]),
+    0.0);
     }
 
     void addTuple(String docName, int rank, double score) {

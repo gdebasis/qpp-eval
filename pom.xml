@@ -101,7 +101,7 @@
     <version>1.6.0</version>
     <executions>
         <execution>
-            <id>retrieve</id>
+            <id>qppeval</id>
             <goals>
                 <goal>java</goal>
             </goals>

@@ -7,8 +7,10 @@ import evaluator.Evaluator;
 import evaluator.Metrics;
 import evaluator.RetrievedResults;
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.commons.math3.stat.correlation.SpearmansCorrelation;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
+import org.apache.commons.math3.util.Pair;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
@@ -120,8 +122,9 @@ public class QPPEvaluator {
         return aggregated_idf/(double)qterms.size();
     }
 
-    double computeNQC(Query q, RetrievedResults topDocs) {
-        double[] rsvs = topDocs.getRSVs();
+    // k docs tp compute NQC
+    double computeNQC(Query q, RetrievedResults topDocs, int k) {
+        double[] rsvs = topDocs.getRSVs(k);
         double sd = new StandardDeviation().evaluate(rsvs);
         double avgIDF = 0;
         try {
@@ -133,7 +136,7 @@ public class QPPEvaluator {
         return sd * avgIDF; // high variance, high avgIDF -- more specificity
     }
 
-    public double evaluateQPPWithModel(List<TRECQuery> queries, Similarity sim, Metrics m) throws Exception {
+    public Pair<Double, Double> evaluateQPPWithModel(List<TRECQuery> queries, Similarity sim, Metrics m) throws Exception {
         int numQueries = queries.size();
         double[] qppEstimates = new double[numQueries];
         double[] evaluatedMetricValues = new double[numQueries];
@@ -151,12 +154,13 @@ public class QPPEvaluator {
         fw.close();
 
         int i = 0;
+        int qppTopK = Integer.parseInt(prop.getProperty("qpp.numtopdocs"));
         String qrelsFile = prop.getProperty("qrels.file");
         Evaluator evaluator = new Evaluator(qrelsFile, resFile); // load ret and rel
 
         for (TRECQuery query : queries) {
             RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
-            qppEstimates[i] = computeNQC(query.getLuceneQueryObj(), rr);
+            qppEstimates[i] = computeNQC(query.getLuceneQueryObj(), rr, qppTopK);
             evaluatedMetricValues[i] = evaluator.compute(query.id, m);
             i++;
         }
@@ -165,18 +169,21 @@ public class QPPEvaluator {
                 m.toString(),
                 StatUtils.mean(evaluatedMetricValues)));
 
-        return new SpearmansCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+        double spearmans = new SpearmansCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+        double kendals = new KendallsCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+
+        return Pair.create(spearmans, kendals);
     }
 
     public void evaluateQPPAll() throws Exception {
         List<TRECQuery> queries = constructQueries();
         Metrics[] metricsForEval = Metrics.values();
 
-        for (Similarity sim: modelsToTest()) {
-            for (Metrics m: metricsForEval) {
-                double spearmans = evaluateQPPWithModel(queries, sim, m);
-                System.out.printf("Model: %s, Metric %s: rho = %.4f%n",
-                        sim.toString(), m.toString(), spearmans);
+        for (Metrics m: metricsForEval) {
+            for (Similarity sim: modelsToTest()) {
+                Pair<Double, Double> rankcorrs = evaluateQPPWithModel(queries, sim, m);
+                System.out.printf("Model: %s, Metric %s: rho = %.4f tau = %.4f%n",
+                        sim.toString(), m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
             }
         }
     }
