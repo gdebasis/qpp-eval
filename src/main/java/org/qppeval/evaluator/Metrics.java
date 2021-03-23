@@ -1,4 +1,4 @@
-package evaluator;
+package org.evaluator;
 
 public enum Metrics {
     AP,

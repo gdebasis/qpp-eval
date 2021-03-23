@@ -1,10 +1,9 @@
-package evaluator;
+package org.evaluator;
 
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class RetrievedResults implements Comparable<RetrievedResults> {

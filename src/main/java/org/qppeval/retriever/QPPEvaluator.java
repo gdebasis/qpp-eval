@@ -1,11 +1,11 @@
-package retriever;
+package org.qppeval.retriever;
 
 import java.io.*;
 import java.util.*;
 
-import evaluator.Evaluator;
-import evaluator.Metrics;
-import evaluator.RetrievedResults;
+import org.qppeval.evaluator.Evaluator;
+import org.qppeval.evaluator.Metrics;
+import org.qppeval.evaluator.RetrievedResults;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.commons.math3.stat.correlation.SpearmansCorrelation;
@@ -20,8 +20,8 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.*;
 import org.apache.lucene.store.*;
-import trec.TRECQuery;
-import trec.TRECQueryParser;
+import org.qppeval.trec.TRECQuery;
+import org.qppeval.trec.TRECQueryParser;
 
 public class QPPEvaluator {
 
@@ -87,7 +87,7 @@ public class QPPEvaluator {
     public Properties getProperties() { return prop; }
     public IndexReader getReader() { return reader; }
 
-    public List<trec.TRECQuery> constructQueries() throws Exception {
+    public List<TRECQuery> constructQueries() throws Exception {
         String queryFile = prop.getProperty("query.file");
         TRECQueryParser parser = new TRECQueryParser(this, queryFile, englishAnalyzerWithSmartStopwords());
         parser.parse();
@@ -111,7 +111,7 @@ public class QPPEvaluator {
     double averageIDF(Query q) throws IOException {
         long N = reader.numDocs();
         Set<Term> qterms = new HashSet<>();
-        q.extractTerms(qterms);
+        q.createWeight(searcher, ScoreMode.COMPLETE, 1).extractTerms(qterms);
 
         float aggregated_idf = 0;
         for (Term t: qterms) {
