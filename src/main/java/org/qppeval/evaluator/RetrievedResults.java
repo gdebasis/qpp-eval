@@ -1,4 +1,4 @@
-package org.evaluator;
+package org.qppeval.evaluator;
 
 import org.apache.commons.lang3.ArrayUtils;
 

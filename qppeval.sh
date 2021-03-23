@@ -8,7 +8,7 @@ fi
 
 #Change this path to index/ (committed on git) after downloading the Lucene indexed
 #TREC disks 4/5 index from https://rsgqglln.tkhcloudstorage.com/item/c59086c6b00d41e79d53c58ad66bc21f
-INDEXDIR=../luc4ir/index_trecd45/
+INDEXDIR=/Users/debasis/research/common/trecd45/index/
 
 QRELS=data/qrels.trec8.adhoc
 

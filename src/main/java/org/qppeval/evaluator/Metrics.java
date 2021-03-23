@@ -1,4 +1,4 @@
-package org.evaluator;
+package org.qppeval.evaluator;
 
 public enum Metrics {
     AP,

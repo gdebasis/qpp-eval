@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package trec;
+package org.qppeval.trec;
 
 import java.util.HashSet;
 import java.util.Set;
