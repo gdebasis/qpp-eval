@@ -136,12 +136,12 @@ public class QPPEvaluator {
         return sd * avgIDF; // high variance, high avgIDF -- more specificity
     }
 
-    public Pair<Double, Double> evaluateQPPWithModel(List<TRECQuery> queries, Similarity sim, Metrics m) throws Exception {
-        int numQueries = queries.size();
-        double[] qppEstimates = new double[numQueries];
-        double[] evaluatedMetricValues = new double[numQueries];
-        String resFile = prop.getProperty("res.file") + "_" + sim.toString();
+    double[] evaluate(List<TRECQuery> queries, Similarity sim, Metrics m) throws Exception {
 
+        int numQueries = queries.size();
+        double[] evaluatedMetricValues = new double[numQueries];
+
+        final String resFile = "/tmp/res";
         FileWriter fw = new FileWriter(resFile);
         BufferedWriter bw = new BufferedWriter(fw);
 
@@ -153,7 +153,38 @@ public class QPPEvaluator {
         bw.close();
         fw.close();
 
+        String qrelsFile = prop.getProperty("qrels.file");
+        Evaluator evaluator = new Evaluator(qrelsFile, resFile); // load ret and rel
+
+        int i=0;
+        for (TRECQuery query : queries) {
+            evaluatedMetricValues[i++] = evaluator.compute(query.id, m);
+        }
+        return evaluatedMetricValues;
+    }
+
+    public Pair<Double, Double> compareModels(
+            List<TRECQuery> queries, Similarity sima,
+            Similarity simb, Metrics m) throws Exception {
+        int numQueries = queries.size();
+        double[] evaluatedMetricValues_sima = evaluate(queries, sima, m);
+        double[] evaluatedMetricValues_simb = evaluate(queries, simb, m);
+
+        double spearmans = new SpearmansCorrelation()
+                .correlation(evaluatedMetricValues_sima, evaluatedMetricValues_simb);
+        double kendals = new KendallsCorrelation()
+                .correlation(evaluatedMetricValues_sima, evaluatedMetricValues_simb);
+
+        return Pair.create(spearmans, kendals);
+    }
+
+    public Pair<Double, Double> evaluateQPPWithModel(List<TRECQuery> queries, Similarity sim, Metrics m) throws Exception {
+        final String resFile = "/tmp/res";
+        double[] qppEstimates = new double[queries.size()];
         int i = 0;
+
+        double[] evaluatedMetricValues = evaluate(queries, sim, m);
+
         int qppTopK = Integer.parseInt(prop.getProperty("qpp.numtopdocs"));
         String qrelsFile = prop.getProperty("qrels.file");
         Evaluator evaluator = new Evaluator(qrelsFile, resFile); // load ret and rel
@@ -161,7 +192,6 @@ public class QPPEvaluator {
         for (TRECQuery query : queries) {
             RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
             qppEstimates[i] = computeNQC(query.getLuceneQueryObj(), rr, qppTopK);
-            evaluatedMetricValues[i] = evaluator.compute(query.id, m);
             i++;
         }
 
@@ -178,9 +208,26 @@ public class QPPEvaluator {
     public void evaluateQPPAll() throws Exception {
         List<TRECQuery> queries = constructQueries();
         Metrics[] metricsForEval = Metrics.values();
+        int i, j;
+        Similarity[] sims = modelsToTest();
 
+        // Measure the inter- rank correlation values across retrieval models
+        // e.g. AP(LM-Dir) and AP(BM25)
         for (Metrics m: metricsForEval) {
-            for (Similarity sim: modelsToTest()) {
+            for (i=0; i < sims.length-1; i++) {
+                for (j=i+1; j < sims.length; j++) {
+                    Pair<Double, Double> rankcorrs = compareModels(queries, sims[i], sims[j], m);
+                    System.out.printf("(%s, %s, %s): rho = %.4f tau = %.4f%n",
+                            sims[i].toString(), sims[j].toString(),
+                            m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
+                }
+            }
+        }
+
+        // Measure the QPP effectiveness with different induced ground-truths
+        // (depending on retrieval model and the metric used, e.g. AP or P@5)
+        for (Metrics m: metricsForEval) {
+            for (Similarity sim: sims) {
                 Pair<Double, Double> rankcorrs = evaluateQPPWithModel(queries, sim, m);
                 System.out.printf("Model: %s, Metric %s: rho = %.4f tau = %.4f%n",
                         sim.toString(), m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
