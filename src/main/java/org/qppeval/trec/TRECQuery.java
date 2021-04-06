@@ -4,10 +4,13 @@
  */
 package org.qppeval.trec;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -27,7 +30,11 @@ public class TRECQuery {
     }
 
     public TRECQuery() {}
-    
+
+    public TRECQuery(Query luceneQuery) {
+        this.luceneQuery = luceneQuery;
+    }
+
     public TRECQuery(TRECQuery that) { // copy constructor
         this.id = that.id;
         this.title = that.title;
@@ -43,4 +50,10 @@ public class TRECQuery {
     }
 
     public Query getLuceneQueryObj() { return luceneQuery; }
+
+    public Set<Term> getQueryTerms(IndexSearcher searcher) throws IOException {
+        Set<Term> terms = new HashSet<>();
+        luceneQuery.createWeight(searcher, ScoreMode.COMPLETE, 1).extractTerms(terms);
+        return terms;
+    }
 }

@@ -99,7 +99,7 @@ public class RetrievedResults implements Comparable<RetrievedResults> {
             numRelSeen++;
         }
         numRelRet = numRelSeen;
-        return numRelSeen;
+        return numRelSeen/(float)relInfo.numRel;
     }
 
     @Override

@@ -182,7 +182,7 @@ class AllRetrievedResults {
         this.allRelInfo = relInfo;
     }
 
-    public double compute(String qid, Metrics m) {
+    public double compute(String qid, Metric m) {
         double res = 0;
         RetrievedResults rr = allRetMap.get(qid);
         switch (m) {
@@ -259,7 +259,7 @@ public class Evaluator {
         return retRcds.computeAll();
     }
 
-    public double compute(String qid, Metrics m) {
+    public double compute(String qid, Metric m) {
         return retRcds.compute(qid, m);
     }
     

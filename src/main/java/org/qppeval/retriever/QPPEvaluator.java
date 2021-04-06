@@ -3,8 +3,9 @@ package org.qppeval.retriever;
 import java.io.*;
 import java.util.*;
 
+import org.qpp.*;
 import org.qppeval.evaluator.Evaluator;
-import org.qppeval.evaluator.Metrics;
+import org.qppeval.evaluator.Metric;
 import org.qppeval.evaluator.RetrievedResults;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
@@ -30,9 +31,9 @@ public class QPPEvaluator {
     int numWanted;
     Properties prop;
     String runName;
-    Similarity model;
+    Map<String, TopDocs> topDocsMap;
 
-    public QPPEvaluator(String propFile, Similarity sim) {
+    public QPPEvaluator(String propFile) {
 
         try {
             prop = new Properties();
@@ -43,10 +44,6 @@ public class QPPEvaluator {
 
             reader = DirectoryReader.open(FSDirectory.open(indexDir.toPath()));
             searcher = new IndexSearcher(reader);
-
-            this.model = sim;
-            searcher.setSimilarity(sim);
-
             numWanted = Integer.parseInt(prop.getProperty("retrieve.num_wanted", "1000"));
             runName = prop.getProperty("retrieve.runname", "lm");
         }
@@ -94,7 +91,7 @@ public class QPPEvaluator {
         return parser.getQueries();
     }
 
-    TopDocs retrieve(TRECQuery query, Similarity sim) throws IOException {
+    TopDocs retrieve(TRECQuery query, Similarity sim, int numWanted) throws IOException {
         searcher.setSimilarity(sim);
         return searcher.search(query.getLuceneQueryObj(), numWanted);
     }
@@ -122,21 +119,13 @@ public class QPPEvaluator {
         return aggregated_idf/(double)qterms.size();
     }
 
-    // k docs tp compute NQC
-    double computeNQC(Query q, RetrievedResults topDocs, int k) {
-        double[] rsvs = topDocs.getRSVs(k);
-        double sd = new StandardDeviation().evaluate(rsvs);
-        double avgIDF = 0;
-        try {
-            avgIDF = averageIDF(q);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return sd * avgIDF; // high variance, high avgIDF -- more specificity
+    double[] evaluate(List<TRECQuery> queries, Similarity sim, Metric m) throws Exception {
+        return evaluate(queries, sim, m, numWanted);
     }
 
-    double[] evaluate(List<TRECQuery> queries, Similarity sim, Metrics m) throws Exception {
+    // Evaluate a given metric (e.g. AP/P@5) for all queries. Return an array of these computed values
+    double[] evaluate(List<TRECQuery> queries, Similarity sim, Metric m, int cutoff) throws Exception {
+        topDocsMap = new HashMap<>();
 
         int numQueries = queries.size();
         double[] evaluatedMetricValues = new double[numQueries];
@@ -146,7 +135,8 @@ public class QPPEvaluator {
         BufferedWriter bw = new BufferedWriter(fw);
 
         for (TRECQuery query : queries) {
-            TopDocs topDocs = retrieve(query, sim);
+            TopDocs topDocs = retrieve(query, sim, cutoff);
+            topDocsMap.put(query.title, topDocs);
             saveRetrievedTuples(bw, query, topDocs, sim.toString());
         }
         bw.flush();
@@ -163,27 +153,14 @@ public class QPPEvaluator {
         return evaluatedMetricValues;
     }
 
-    public Pair<Double, Double> compareModels(
-            List<TRECQuery> queries, Similarity sima,
-            Similarity simb, Metrics m) throws Exception {
-        int numQueries = queries.size();
-        double[] evaluatedMetricValues_sima = evaluate(queries, sima, m);
-        double[] evaluatedMetricValues_simb = evaluate(queries, simb, m);
-
-        double spearmans = new SpearmansCorrelation()
-                .correlation(evaluatedMetricValues_sima, evaluatedMetricValues_simb);
-        double kendals = new KendallsCorrelation()
-                .correlation(evaluatedMetricValues_sima, evaluatedMetricValues_simb);
-
-        return Pair.create(spearmans, kendals);
-    }
-
-    public Pair<Double, Double> evaluateQPPWithModel(List<TRECQuery> queries, Similarity sim, Metrics m) throws Exception {
+    public Pair<Double, Double> evaluateQPPOnModel(
+            QPPMethod qppMethod,
+           List<TRECQuery> queries,
+           double[] evaluatedMetricValues,
+           Metric m) throws Exception {
         final String resFile = "/tmp/res";
         double[] qppEstimates = new double[queries.size()];
         int i = 0;
-
-        double[] evaluatedMetricValues = evaluate(queries, sim, m);
 
         int qppTopK = Integer.parseInt(prop.getProperty("qpp.numtopdocs"));
         String qrelsFile = prop.getProperty("qrels.file");
@@ -191,13 +168,14 @@ public class QPPEvaluator {
 
         for (TRECQuery query : queries) {
             RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
-            qppEstimates[i] = computeNQC(query.getLuceneQueryObj(), rr, qppTopK);
+            TopDocs topDocs = topDocsMap.get(query.title);
+            if (topDocs==null) {
+                System.err.println("No Topdocs found for query <" + query.title + ">");
+                System.exit(1);
+            }
+            qppEstimates[i] = qppMethod.computeSpecificity(query.getLuceneQueryObj(), rr, topDocs, qppTopK);
             i++;
         }
-
-        System.out.println(String.format("Average %s: %.4f",
-                m.toString(),
-                StatUtils.mean(evaluatedMetricValues)));
 
         double spearmans = new SpearmansCorrelation().correlation(evaluatedMetricValues, qppEstimates);
         double kendals = new KendallsCorrelation().correlation(evaluatedMetricValues, qppEstimates);
@@ -205,34 +183,236 @@ public class QPPEvaluator {
         return Pair.create(spearmans, kendals);
     }
 
-    public void evaluateQPPAll() throws Exception {
-        List<TRECQuery> queries = constructQueries();
-        Metrics[] metricsForEval = Metrics.values();
-        int i, j;
-        Similarity[] sims = modelsToTest();
+    QPPMethod[] qppMethods() {
+        QPPMethod[] qppMethods = {
+                new AvgIDFSpecificity(searcher),
+                new NQCSpecificity(searcher),
+                new ClaritySpecificity(searcher),
+                new WIGSpecificity(searcher)
+        };
+        return qppMethods;
+    }
 
-        // Measure the inter- rank correlation values across retrieval models
-        // e.g. AP(LM-Dir) and AP(BM25)
-        for (Metrics m: metricsForEval) {
-            for (i=0; i < sims.length-1; i++) {
-                for (j=i+1; j < sims.length; j++) {
-                    Pair<Double, Double> rankcorrs = compareModels(queries, sims[i], sims[j], m);
-                    System.out.printf("(%s, %s, %s): rho = %.4f tau = %.4f%n",
-                            sims[i].toString(), sims[j].toString(),
-                            m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
+    public void relativeSystemRanksAcrossSims(List<TRECQuery> queries) throws Exception {
+        relativeSystemRanksAcrossSims(queries, numWanted);
+    }
+
+    public void relativeSystemRanksAcrossSims(List<TRECQuery> queries, int cutoff) throws Exception {
+        Metric[] metricForEval = Metric.values();
+        for (Metric m: metricForEval) {
+            relativeSystemRanksAcrossSims(m, queries, cutoff);
+        }
+    }
+
+    public void relativeSystemRanksAcrossMetrics(List<TRECQuery> queries) throws Exception {
+        Similarity[] sims = modelsToTest();
+        for (Similarity sim: sims) {
+            relativeSystemRanksAcrossMetrics(sim, queries, numWanted);
+        }
+    }
+
+    public void relativeSystemRanksAcrossMetrics(List<TRECQuery> queries, int cutoff) throws Exception {
+        Similarity[] sims = modelsToTest();
+        for (Similarity sim: sims) {
+            relativeSystemRanksAcrossMetrics(sim, queries, cutoff);
+        }
+    }
+
+    /*
+    Compute how much system rankings change with different settings for different IR models (BM25, LM etc.).
+    For each model compute the average rank shift over a range of
+    different metrics. For stability, these numbers should be high.
+     */
+    public void relativeSystemRanksAcrossMetrics(Similarity sim, List<TRECQuery> queries, int cutoff) throws Exception {
+        int i, j, k;
+
+        Metric[] metricForEval = Metric.values();
+        QPPMethod[] qppMethods = qppMethods();
+
+        // Rho and tau scores across the QPP methods.
+        double[][] rho_scores = new double[metricForEval.length][qppMethods.length];
+        double[][] tau_scores = new double[metricForEval.length][qppMethods.length];
+        Pair<Double, Double> rankcorrs;
+
+        int numQueries = queries.size();
+        Map<Integer, double[]> preEvaluated = new HashMap<>();
+
+        for (i=0; i< metricForEval.length; i++) { // pre-evaluate for each metric
+            Metric m = metricForEval[i];
+            double[] evaluatedMetricValues = evaluate(queries, sim, m, cutoff);
+            preEvaluated.put(i, evaluatedMetricValues);
+            System.out.println(String.format("Average %s (IR-model: %s, Metric: %s): %.4f",
+                    m.toString(), sim.toString(), m.toString(),
+                    StatUtils.mean(evaluatedMetricValues)));
+        }
+
+        k = 0;
+        for (QPPMethod qppMethod: qppMethods) {
+            for (i = 0; i < metricForEval.length-1; i++) {
+                rankcorrs = evaluateQPPOnModel(qppMethod, queries, preEvaluated.get(i), metricForEval[i]);
+                rho_scores[i][k] = rankcorrs.getFirst();
+                tau_scores[i][k] = rankcorrs.getSecond();
+
+                for (j = i+1; j < metricForEval.length; j++) {
+                    rankcorrs = evaluateQPPOnModel(qppMethod, queries, preEvaluated.get(j), metricForEval[j]);
+                    rho_scores[j][k] = rankcorrs.getFirst();
+                    tau_scores[j][k] = rankcorrs.getSecond();
+                }
+            }
+            k++;
+        }
+
+        System.out.println("Contingency for IR model: " + sim.toString());
+        for (i = 0; i < metricForEval.length-1; i++) {
+            System.out.println(metricForEval[i].name() + ": " + getRowVector_Str(rho_scores, i));
+            for (j = i + 1; j < metricForEval.length; j++) {
+                double inter_rho = rankCorrAcrossCutOffs_Spearman(rho_scores, i, j);
+                double inter_kendal = rankCorrAcrossCutOffs_Kendals(tau_scores, i, j);
+                System.out.println(metricForEval[j].name() + ": " + getRowVector_Str(rho_scores, j));
+                System.out.printf("%d/%d: %.4f/%.4f \n", i, j, inter_rho, inter_kendal);
+            }
+        }
+    }
+
+    /*
+    Compute how much system rankings change with different settings for metric (AP, P@5)
+    or retrieval model used. For each metric compute the average rank correlation over a range of
+    different retrieval models. For stability, these numbers should be high.
+     */
+    public void relativeSystemRanksAcrossSims(Metric m, List<TRECQuery> queries, int cutoff) throws Exception {
+        int i, j, k;
+
+        Similarity[] sims = modelsToTest();
+        QPPMethod[] qppMethods = qppMethods();
+
+        // Rho and tau scores across the QPP methods.
+        double[][] rho_scores = new double[sims.length][qppMethods.length];
+        double[][] tau_scores = new double[sims.length][qppMethods.length];
+        Pair<Double, Double> rankcorrs;
+
+        int numQueries = queries.size();
+        Map<Integer, double[]> evaluatedMetricValuesSims = new HashMap<>();
+
+        for (i=0; i<sims.length; i++) {
+            double[] evaluatedMetricValues = evaluate(queries, sims[i], m, cutoff);
+            evaluatedMetricValuesSims.put(i, evaluatedMetricValues);
+            System.out.println(String.format("Average %s (IR-model: %s, Metric: %s): %.4f",
+                    m.toString(), sims[i].toString(), m.toString(),
+                    StatUtils.mean(evaluatedMetricValues)));
+        }
+
+        k = 0;
+        for (QPPMethod qppMethod: qppMethods) {
+            for (i = 0; i < sims.length-1; i++) {
+                rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValuesSims.get(i), m);
+                rho_scores[i][k] = rankcorrs.getFirst();
+                tau_scores[i][k] = rankcorrs.getSecond();
+
+                for (j = i+1; j < sims.length; j++) {
+                    rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValuesSims.get(j), m);
+                    rho_scores[j][k] = rankcorrs.getFirst();
+                    tau_scores[j][k] = rankcorrs.getSecond();
+                }
+            }
+            k++;
+        }
+
+        System.out.println("Contingency for metric: " + m.toString());
+        for (i = 0; i < sims.length-1; i++) {
+            for (j = i + 1; j < sims.length; j++) {
+                double inter_rho = rankCorrAcrossCutOffs_Spearman(rho_scores, i, j);
+                double inter_kendal = rankCorrAcrossCutOffs_Kendals(tau_scores, i, j);
+                System.out.printf("%d/%d: %.4f/%.4f \n", i, j, inter_rho, inter_kendal);
+            }
+        }
+    }
+
+    public void evaluateQPPAllWithCutoffs(List<TRECQuery> queries) throws Exception {
+        QPPMethod[] qppMethods = qppMethods();
+        for (QPPMethod qppMethod: qppMethods) {
+            System.out.println("Results with " + qppMethod.name());
+            evaluateQPPAllWithCutoffs(qppMethod, queries);
+        }
+    }
+
+    public void evaluateQPPAllWithCutoffs(QPPMethod qppMethod, List<TRECQuery> queries) throws Exception {
+        // Measure the relative stability of the rank of different systems
+        // with varying number of top-docs and metrics
+        Metric[] metricForEval = Metric.values();
+        Similarity[] sims = modelsToTest();
+        int i, j;
+        final int numCutOffs = 10;
+        final int cutOffStep = 10;
+
+        for (Metric m : metricForEval) {
+            for (i=0; i<numCutOffs; i++) {
+                int cutoff = (i+1)*cutOffStep;
+                for (Similarity sim : sims) {
+                    double[] evaluatedMetricValues = evaluate(queries, sim, m, cutoff);
+                    Pair<Double, Double> rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValues, m);
+                    System.out.printf("Model: %s, Metric %s: rho = %.4f tau = %.4f%n",
+                            sim.toString(), m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
                 }
             }
         }
+    }
 
-        // Measure the QPP effectiveness with different induced ground-truths
-        // (depending on retrieval model and the metric used, e.g. AP or P@5)
-        for (Metrics m: metricsForEval) {
-            for (Similarity sim: sims) {
-                Pair<Double, Double> rankcorrs = evaluateQPPWithModel(queries, sim, m);
-                System.out.printf("Model: %s, Metric %s: rho = %.4f tau = %.4f%n",
+    public void evaluateQPPAtCutoff(List<TRECQuery> queries) throws Exception {
+        QPPMethod[] qppMethods = qppMethods();
+        for (QPPMethod qppMethod: qppMethods) {
+            evaluateQPPAtCutoff(qppMethod, queries, numWanted);
+        }
+    }
+
+    public void evaluateQPPAtCutoff(QPPMethod qppMethod, List<TRECQuery> queries, int cutoff) throws Exception {
+        Metric[] metricForEval = Metric.values();
+        Similarity[] sims = modelsToTest();
+
+        for (Metric m : metricForEval) {
+            for (Similarity sim : sims) {
+                double[] evaluatedMetricValues = evaluate(queries, sim, m, cutoff);
+                System.out.println(String.format("Average %s (IR-model: %s, Metric: %s): %.4f",
+                        m.toString(), sim.toString(), m.toString(),
+                        StatUtils.mean(evaluatedMetricValues)));
+
+                Pair<Double, Double> rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValues, m);
+                System.out.printf("QPP-method: %s Model: %s, Metric %s: rho = %.4f tau = %.4f%n", qppMethod.name(),
                         sim.toString(), m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
             }
         }
+    }
+
+    double rankCorrAcrossCutOffs_Spearman(double[][] rankCorrMatrix_rho, int row_a, int row_b) {
+        double[] rc_a = getRowVector(rankCorrMatrix_rho, row_a);
+        double[] rc_b = getRowVector(rankCorrMatrix_rho, row_b);
+
+        double spearmans = new SpearmansCorrelation().correlation(rc_a, rc_b);
+        return spearmans;
+    }
+
+    double rankCorrAcrossCutOffs_Kendals(double[][] rankCorrMatrix_kendals, int row_a, int row_b) {
+        double[] rc_a = getRowVector(rankCorrMatrix_kendals, row_a);
+        double[] rc_b = getRowVector(rankCorrMatrix_kendals, row_b);
+
+        double kendals = new KendallsCorrelation().correlation(rc_a, rc_b);
+        return kendals;
+    }
+
+    double[] getRowVector(double[][] rankCorrMatrix, int row) {
+        double[] values = new double[rankCorrMatrix[row].length];
+        for (int j=0; j < values.length; j++) {
+            values[j] = rankCorrMatrix[row][j];
+        }
+        return values;
+    }
+
+    String getRowVector_Str(double[][] rankCorrMatrix, int row) {
+        double[] rowvec = getRowVector(rankCorrMatrix, row);
+        StringBuilder buff = new StringBuilder("{");
+        for (double x: rowvec)
+            buff.append(x).append(" ");
+
+        return buff.append("}").toString();
     }
 
     public void saveRetrievedTuples(BufferedWriter bw, TRECQuery query,
@@ -258,8 +438,14 @@ public class QPPEvaluator {
         }
 
         try {
-            QPPEvaluator searcher = new QPPEvaluator(args[0], new LMJelinekMercerSimilarity(0.4f));
-            searcher.evaluateQPPAll();
+            QPPEvaluator qppEvaluator = new QPPEvaluator(args[0]);
+            List<TRECQuery> queries = qppEvaluator.constructQueries();
+            //qppEvaluator.evaluateQPPAtCutoff(queries);
+
+            //qppEvaluator.evaluateQPPAllWithCutoffs(queries);
+
+            //qppEvaluator.relativeSystemRanksAcrossSims(queries);
+            qppEvaluator.relativeSystemRanksAcrossMetrics(queries);
         }
         catch (Exception ex) {
             ex.printStackTrace();
