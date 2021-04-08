@@ -1,10 +1,13 @@
 package org.qpp;
 
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.qppeval.evaluator.RetrievedResults;
 import org.qppeval.trec.TRECQuery;
+
+import java.util.Set;
 
 public class WIGSpecificity extends AvgIDFSpecificity {
 
@@ -18,8 +21,9 @@ public class WIGSpecificity extends AvgIDFSpecificity {
         double avgIDF = 0;
         int numQueryTerms = 1;
         try {
-            numQueryTerms = new TRECQuery(q).getQueryTerms(searcher).size();
-            avgIDF = averageIDF(q);
+            Set<Term> qterms = new TRECQuery(q).getQueryTerms(searcher);
+            numQueryTerms = qterms.size();
+            avgIDF = 1/averageIDF(q);
         }
         catch (Exception ex) { ex.printStackTrace(); }
 

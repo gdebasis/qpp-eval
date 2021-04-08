@@ -10,7 +10,6 @@ import org.qppeval.evaluator.RetrievedResults;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.commons.math3.stat.correlation.SpearmansCorrelation;
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.util.Pair;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.StopFilter;
@@ -188,7 +187,11 @@ public class QPPEvaluator {
                 new AvgIDFSpecificity(searcher),
                 new NQCSpecificity(searcher),
                 new ClaritySpecificity(searcher),
-                new WIGSpecificity(searcher)
+                new WIGSpecificity(searcher),
+                new UEFSpecificity(new AvgIDFSpecificity(searcher)),
+                new UEFSpecificity(new NQCSpecificity(searcher)),
+                new UEFSpecificity(new ClaritySpecificity(searcher)),
+                new UEFSpecificity(new WIGSpecificity(searcher)),
         };
         return qppMethods;
     }
@@ -264,12 +267,12 @@ public class QPPEvaluator {
 
         System.out.println("Contingency for IR model: " + sim.toString());
         for (i = 0; i < metricForEval.length-1; i++) {
-            System.out.println(metricForEval[i].name() + ": " + getRowVector_Str(rho_scores, i));
+            //System.out.println("Rho values using " + sim.toString() + ", " + metricForEval[i].name() + " as GT: " + getRowVector_Str(rho_scores, i));
             for (j = i + 1; j < metricForEval.length; j++) {
                 double inter_rho = rankCorrAcrossCutOffs_Spearman(rho_scores, i, j);
                 double inter_kendal = rankCorrAcrossCutOffs_Kendals(tau_scores, i, j);
-                System.out.println(metricForEval[j].name() + ": " + getRowVector_Str(rho_scores, j));
-                System.out.printf("%d/%d: %.4f/%.4f \n", i, j, inter_rho, inter_kendal);
+                //System.out.println("Rho values using " + sim.toString() + ", " + metricForEval[j].name() + " as GT: " + getRowVector_Str(rho_scores, j));
+                System.out.printf("%s %s/%s: %.4f/%.4f \n", sim.toString(), metricForEval[i].name(), metricForEval[j].name(), inter_rho, inter_kendal);
             }
         }
     }
@@ -319,10 +322,12 @@ public class QPPEvaluator {
 
         System.out.println("Contingency for metric: " + m.toString());
         for (i = 0; i < sims.length-1; i++) {
+            //System.out.println("Rho values using " + sims[i].toString() + ", " + m.name() + " as GT: " + getRowVector_Str(rho_scores, i));
             for (j = i + 1; j < sims.length; j++) {
+                //System.out.println("Rho values using " + sims[i].toString() + ", " + m.name() + " as GT: " + getRowVector_Str(rho_scores, i));
                 double inter_rho = rankCorrAcrossCutOffs_Spearman(rho_scores, i, j);
                 double inter_kendal = rankCorrAcrossCutOffs_Kendals(tau_scores, i, j);
-                System.out.printf("%d/%d: %.4f/%.4f \n", i, j, inter_rho, inter_kendal);
+                System.out.printf("%s %s/%s: %.4f/%.4f \n", m.name(), sims[i].toString(), sims[j].toString(), inter_rho, inter_kendal);
             }
         }
     }
@@ -440,12 +445,12 @@ public class QPPEvaluator {
         try {
             QPPEvaluator qppEvaluator = new QPPEvaluator(args[0]);
             List<TRECQuery> queries = qppEvaluator.constructQueries();
-            //qppEvaluator.evaluateQPPAtCutoff(queries);
+            qppEvaluator.evaluateQPPAtCutoff(queries);
 
             //qppEvaluator.evaluateQPPAllWithCutoffs(queries);
 
             //qppEvaluator.relativeSystemRanksAcrossSims(queries);
-            qppEvaluator.relativeSystemRanksAcrossMetrics(queries);
+            //qppEvaluator.relativeSystemRanksAcrossMetrics(queries);
         }
         catch (Exception ex) {
             ex.printStackTrace();
