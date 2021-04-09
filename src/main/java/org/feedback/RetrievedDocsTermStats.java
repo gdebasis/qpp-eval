@@ -10,7 +10,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
-import org.qppeval.trec.FieldConstants;
+import org.trec.FieldConstants;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -4,8 +4,8 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
-import org.qppeval.evaluator.RetrievedResults;
-import org.qppeval.trec.TRECQuery;
+import org.evaluator.RetrievedResults;
+import org.trec.TRECQuery;
 
 import java.util.Set;
 

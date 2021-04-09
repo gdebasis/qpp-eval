@@ -7,7 +7,7 @@ package org.feedback;
 
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TopDocs;
-import org.qppeval.trec.TRECQuery;
+import org.trec.TRECQuery;
 
 import java.util.Map;
 

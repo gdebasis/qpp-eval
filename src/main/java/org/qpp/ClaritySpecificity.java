@@ -5,8 +5,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.feedback.RelevanceModelConditional;
 import org.feedback.RelevanceModelIId;
-import org.qppeval.evaluator.RetrievedResults;
-import org.qppeval.trec.TRECQuery;
+import org.evaluator.RetrievedResults;
+import org.trec.TRECQuery;
 
 public class ClaritySpecificity extends AvgIDFSpecificity {
     public ClaritySpecificity(IndexSearcher searcher) {

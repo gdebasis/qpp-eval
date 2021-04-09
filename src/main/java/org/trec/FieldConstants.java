@@ -1,4 +1,4 @@
-package org.qppeval.trec;
+package org.trec;
 
 public class FieldConstants {
     public static final String FIELD_ANALYZED_CONTENT = "words";

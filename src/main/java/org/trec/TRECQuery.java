@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.qppeval.trec;
+package org.trec;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -11,7 +11,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Weight;
 
 /**
  *

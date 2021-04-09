@@ -1,16 +1,13 @@
-package org.qppeval.retriever;
+package org.retriever;
 
 import java.io.*;
 import java.util.*;
 
 import org.qpp.*;
-import org.qppeval.evaluator.Evaluator;
-import org.qppeval.evaluator.Metric;
-import org.qppeval.evaluator.RetrievedResults;
+import org.evaluator.Evaluator;
+import org.evaluator.Metric;
+import org.evaluator.RetrievedResults;
 import org.apache.commons.math3.stat.StatUtils;
-import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
-import org.apache.commons.math3.stat.correlation.SpearmansCorrelation;
-import org.apache.commons.math3.util.Pair;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
@@ -20,8 +17,8 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.*;
 import org.apache.lucene.store.*;
-import org.qppeval.trec.TRECQuery;
-import org.qppeval.trec.TRECQueryParser;
+import org.trec.TRECQuery;
+import org.trec.TRECQueryParser;
 
 public class QPPEvaluator {
 
@@ -31,13 +28,12 @@ public class QPPEvaluator {
     Properties prop;
     String runName;
     Map<String, TopDocs> topDocsMap;
+    QPPCorrelationMetric correlationMetric;
 
-    public QPPEvaluator(String propFile) {
+    public QPPEvaluator(Properties prop, QPPCorrelationMetric correlationMetric) {
+        this.prop = prop;
 
         try {
-            prop = new Properties();
-            prop.load(new FileReader(propFile));
-
             File indexDir = new File(prop.getProperty("index.dir"));
             System.out.println("Running queries against index: " + indexDir.getPath());
 
@@ -45,6 +41,7 @@ public class QPPEvaluator {
             searcher = new IndexSearcher(reader);
             numWanted = Integer.parseInt(prop.getProperty("retrieve.num_wanted", "1000"));
             runName = prop.getProperty("retrieve.runname", "lm");
+            this.correlationMetric = correlationMetric;
         }
         catch (Exception ex) {
             ex.printStackTrace();
@@ -152,7 +149,7 @@ public class QPPEvaluator {
         return evaluatedMetricValues;
     }
 
-    public Pair<Double, Double> evaluateQPPOnModel(
+    public double evaluateQPPOnModel(
             QPPMethod qppMethod,
            List<TRECQuery> queries,
            double[] evaluatedMetricValues,
@@ -176,10 +173,7 @@ public class QPPEvaluator {
             i++;
         }
 
-        double spearmans = new SpearmansCorrelation().correlation(evaluatedMetricValues, qppEstimates);
-        double kendals = new KendallsCorrelation().correlation(evaluatedMetricValues, qppEstimates);
-
-        return Pair.create(spearmans, kendals);
+        return correlationMetric.correlation(evaluatedMetricValues, qppEstimates);
     }
 
     QPPMethod[] qppMethods() {
@@ -233,9 +227,8 @@ public class QPPEvaluator {
         QPPMethod[] qppMethods = qppMethods();
 
         // Rho and tau scores across the QPP methods.
-        double[][] rho_scores = new double[metricForEval.length][qppMethods.length];
-        double[][] tau_scores = new double[metricForEval.length][qppMethods.length];
-        Pair<Double, Double> rankcorrs;
+        double[][] corr_scores = new double[metricForEval.length][qppMethods.length];
+        double rankcorr;
 
         int numQueries = queries.size();
         Map<Integer, double[]> preEvaluated = new HashMap<>();
@@ -252,14 +245,12 @@ public class QPPEvaluator {
         k = 0;
         for (QPPMethod qppMethod: qppMethods) {
             for (i = 0; i < metricForEval.length-1; i++) {
-                rankcorrs = evaluateQPPOnModel(qppMethod, queries, preEvaluated.get(i), metricForEval[i]);
-                rho_scores[i][k] = rankcorrs.getFirst();
-                tau_scores[i][k] = rankcorrs.getSecond();
+                rankcorr = evaluateQPPOnModel(qppMethod, queries, preEvaluated.get(i), metricForEval[i]);
+                corr_scores[i][k] = rankcorr;
 
                 for (j = i+1; j < metricForEval.length; j++) {
-                    rankcorrs = evaluateQPPOnModel(qppMethod, queries, preEvaluated.get(j), metricForEval[j]);
-                    rho_scores[j][k] = rankcorrs.getFirst();
-                    tau_scores[j][k] = rankcorrs.getSecond();
+                    rankcorr = evaluateQPPOnModel(qppMethod, queries, preEvaluated.get(j), metricForEval[j]);
+                    corr_scores[j][k] = rankcorr;
                 }
             }
             k++;
@@ -267,12 +258,12 @@ public class QPPEvaluator {
 
         System.out.println("Contingency for IR model: " + sim.toString());
         for (i = 0; i < metricForEval.length-1; i++) {
-            //System.out.println("Rho values using " + sim.toString() + ", " + metricForEval[i].name() + " as GT: " + getRowVector_Str(rho_scores, i));
+            //System.out.println("Rho values using " + sim.toString() + ", " + metricForEval[i].name() + " as GT: " + getRowVector_Str(corr_scores, i));
             for (j = i + 1; j < metricForEval.length; j++) {
-                double inter_rho = rankCorrAcrossCutOffs_Spearman(rho_scores, i, j);
-                double inter_kendal = rankCorrAcrossCutOffs_Kendals(tau_scores, i, j);
-                //System.out.println("Rho values using " + sim.toString() + ", " + metricForEval[j].name() + " as GT: " + getRowVector_Str(rho_scores, j));
-                System.out.printf("%s %s/%s: %.4f/%.4f \n", sim.toString(), metricForEval[i].name(), metricForEval[j].name(), inter_rho, inter_kendal);
+                double inter_corr = rankCorrAcrossCutOffs(corr_scores, i, j);
+                //System.out.println("Rho values using " + sim.toString() + ", " + metricForEval[j].name() + " as GT: " + getRowVector_Str(corr_scores, j));
+                System.out.printf("%s %s/%s: %s = %.4f \n",
+                        sim.toString(), metricForEval[i].name(), metricForEval[j].name(), correlationMetric.name(), inter_corr);
             }
         }
     }
@@ -289,9 +280,8 @@ public class QPPEvaluator {
         QPPMethod[] qppMethods = qppMethods();
 
         // Rho and tau scores across the QPP methods.
-        double[][] rho_scores = new double[sims.length][qppMethods.length];
-        double[][] tau_scores = new double[sims.length][qppMethods.length];
-        Pair<Double, Double> rankcorrs;
+        double[][] corr_scores = new double[sims.length][qppMethods.length];
+        double rankcorr;
 
         int numQueries = queries.size();
         Map<Integer, double[]> evaluatedMetricValuesSims = new HashMap<>();
@@ -307,14 +297,12 @@ public class QPPEvaluator {
         k = 0;
         for (QPPMethod qppMethod: qppMethods) {
             for (i = 0; i < sims.length-1; i++) {
-                rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValuesSims.get(i), m);
-                rho_scores[i][k] = rankcorrs.getFirst();
-                tau_scores[i][k] = rankcorrs.getSecond();
+                rankcorr = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValuesSims.get(i), m);
+                corr_scores[i][k] = rankcorr;
 
                 for (j = i+1; j < sims.length; j++) {
-                    rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValuesSims.get(j), m);
-                    rho_scores[j][k] = rankcorrs.getFirst();
-                    tau_scores[j][k] = rankcorrs.getSecond();
+                    rankcorr = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValuesSims.get(j), m);
+                    corr_scores[j][k] = rankcorr;
                 }
             }
             k++;
@@ -325,9 +313,9 @@ public class QPPEvaluator {
             //System.out.println("Rho values using " + sims[i].toString() + ", " + m.name() + " as GT: " + getRowVector_Str(rho_scores, i));
             for (j = i + 1; j < sims.length; j++) {
                 //System.out.println("Rho values using " + sims[i].toString() + ", " + m.name() + " as GT: " + getRowVector_Str(rho_scores, i));
-                double inter_rho = rankCorrAcrossCutOffs_Spearman(rho_scores, i, j);
-                double inter_kendal = rankCorrAcrossCutOffs_Kendals(tau_scores, i, j);
-                System.out.printf("%s %s/%s: %.4f/%.4f \n", m.name(), sims[i].toString(), sims[j].toString(), inter_rho, inter_kendal);
+                double inter_corr = rankCorrAcrossCutOffs(corr_scores, i, j);
+                System.out.printf("%s %s/%s: %s = %.4f \n",
+                        m.name(), sims[i].toString(), sims[j].toString(), correlationMetric.name(), inter_corr);
             }
         }
     }
@@ -354,9 +342,9 @@ public class QPPEvaluator {
                 int cutoff = (i+1)*cutOffStep;
                 for (Similarity sim : sims) {
                     double[] evaluatedMetricValues = evaluate(queries, sim, m, cutoff);
-                    Pair<Double, Double> rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValues, m);
-                    System.out.printf("Model: %s, Metric %s: rho = %.4f tau = %.4f%n",
-                            sim.toString(), m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
+                    double rankcorr = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValues, m);
+                    System.out.printf("Model: %s, Metric %s: QPP-corr (%s) = %.4f%n",
+                            sim.toString(), m.toString(), rankcorr);
                 }
             }
         }
@@ -380,27 +368,17 @@ public class QPPEvaluator {
                         m.toString(), sim.toString(), m.toString(),
                         StatUtils.mean(evaluatedMetricValues)));
 
-                Pair<Double, Double> rankcorrs = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValues, m);
-                System.out.printf("QPP-method: %s Model: %s, Metric %s: rho = %.4f tau = %.4f%n", qppMethod.name(),
-                        sim.toString(), m.toString(), rankcorrs.getFirst(), rankcorrs.getSecond());
+                double rankcorr = evaluateQPPOnModel(qppMethod, queries, evaluatedMetricValues, m);
+                System.out.printf("QPP-method: %s Model: %s, Metric %s: %s = %.4f%n", qppMethod.name(),
+                        sim.toString(), m.toString(), correlationMetric.name(), rankcorr);
             }
         }
     }
 
-    double rankCorrAcrossCutOffs_Spearman(double[][] rankCorrMatrix_rho, int row_a, int row_b) {
-        double[] rc_a = getRowVector(rankCorrMatrix_rho, row_a);
-        double[] rc_b = getRowVector(rankCorrMatrix_rho, row_b);
-
-        double spearmans = new SpearmansCorrelation().correlation(rc_a, rc_b);
-        return spearmans;
-    }
-
-    double rankCorrAcrossCutOffs_Kendals(double[][] rankCorrMatrix_kendals, int row_a, int row_b) {
-        double[] rc_a = getRowVector(rankCorrMatrix_kendals, row_a);
-        double[] rc_b = getRowVector(rankCorrMatrix_kendals, row_b);
-
-        double kendals = new KendallsCorrelation().correlation(rc_a, rc_b);
-        return kendals;
+    double rankCorrAcrossCutOffs(double[][] rankCorrMatrix, int row_a, int row_b) {
+        double[] rc_a = getRowVector(rankCorrMatrix, row_a);
+        double[] rc_b = getRowVector(rankCorrMatrix, row_b);
+        return correlationMetric.correlation(rc_a, rc_b);
     }
 
     double[] getRowVector(double[][] rankCorrMatrix, int row) {
@@ -443,14 +421,27 @@ public class QPPEvaluator {
         }
 
         try {
-            QPPEvaluator qppEvaluator = new QPPEvaluator(args[0]);
-            List<TRECQuery> queries = qppEvaluator.constructQueries();
-            qppEvaluator.evaluateQPPAtCutoff(queries);
+            Properties prop = new Properties();
+            prop.load(new FileReader(args[0]));
 
-            //qppEvaluator.evaluateQPPAllWithCutoffs(queries);
+            QPPCorrelationMetric[] qppCorrelationMetrics = {
+                    //new SpearmanCorrelation(),
+                    //new KendalCorrelation(),
+                    new QuantizedSimCorrelation(Integer.parseInt(prop.getProperty("qsim.numintervals", "5")))
+                    //new QuantizedStrictMatchCorrelation(Integer.parseInt(prop.getProperty("qsim.numintervals", "5")))
+            };
 
-            //qppEvaluator.relativeSystemRanksAcrossSims(queries);
-            //qppEvaluator.relativeSystemRanksAcrossMetrics(queries);
+            for (QPPCorrelationMetric correlationMetric: qppCorrelationMetrics) {
+                QPPEvaluator qppEvaluator = new QPPEvaluator(prop, correlationMetric);
+                List<TRECQuery> queries = qppEvaluator.constructQueries();
+                qppEvaluator.evaluateQPPAtCutoff(queries);
+
+                //No need to test with all cutoffs
+                //qppEvaluator.evaluateQPPAllWithCutoffs(queries);
+
+                //qppEvaluator.relativeSystemRanksAcrossSims(queries);
+                //qppEvaluator.relativeSystemRanksAcrossMetrics(queries);
+            }
         }
         catch (Exception ex) {
             ex.printStackTrace();

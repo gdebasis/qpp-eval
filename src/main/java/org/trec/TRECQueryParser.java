@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.qppeval.trec;
+package org.trec;
 
 /**
  *
@@ -18,7 +18,7 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser;
 import org.apache.lucene.search.Query;
-import org.qppeval.retriever.QPPEvaluator;
+import org.retriever.QPPEvaluator;
 
 public class TRECQueryParser extends DefaultHandler {
     StringBuffer        buff;      // Accumulation buffer for storing the current topic

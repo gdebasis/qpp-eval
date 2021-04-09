@@ -4,7 +4,7 @@ import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
-import org.qppeval.evaluator.RetrievedResults;
+import org.evaluator.RetrievedResults;
 
 import java.io.IOException;
 
