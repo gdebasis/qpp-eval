@@ -1,10 +1,10 @@
-package org.retriever;
+package org.correlation;
 
 public class QuantizedSimCorrelation implements QPPCorrelationMetric {
     int numIntervals;
     double delta;
 
-    QuantizedSimCorrelation(int numIntervals) {
+    public QuantizedSimCorrelation(int numIntervals) {
         this.numIntervals = numIntervals;
         delta = 1/(double)numIntervals;
     }

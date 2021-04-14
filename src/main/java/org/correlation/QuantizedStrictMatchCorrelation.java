@@ -1,8 +1,8 @@
-package org.retriever;
+package org.correlation;
 
 public class QuantizedStrictMatchCorrelation extends QuantizedSimCorrelation {
 
-    QuantizedStrictMatchCorrelation(int numIntervals) {
+    public QuantizedStrictMatchCorrelation(int numIntervals) {
         super(numIntervals);
     }
 

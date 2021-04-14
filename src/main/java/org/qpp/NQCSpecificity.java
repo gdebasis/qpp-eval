@@ -8,7 +8,7 @@ import org.evaluator.RetrievedResults;
 
 import java.io.IOException;
 
-public class NQCSpecificity extends AvgIDFSpecificity {
+public class NQCSpecificity extends BaseIDFSpecificity {
 
     public NQCSpecificity(IndexSearcher searcher) {
         super(searcher);
@@ -30,16 +30,18 @@ public class NQCSpecificity extends AvgIDFSpecificity {
             nqc += del*del;
         }
         nqc /= (double)rsvs.length;
+
         try {
-            avgIDF = averageIDF(q);
+            avgIDF = maxIDF(q);
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         return nqc * avgIDF; // high variance, high avgIDF -- more specificity
     }
 
     @Override
     public String name() {
-        return "NQC";
+        return "nqc";
     }
 }

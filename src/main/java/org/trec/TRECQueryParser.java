@@ -18,7 +18,7 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser;
 import org.apache.lucene.search.Query;
-import org.retriever.QPPEvaluator;
+import org.experiments.QPPEvaluator;
 
 public class TRECQueryParser extends DefaultHandler {
     StringBuffer        buff;      // Accumulation buffer for storing the current topic

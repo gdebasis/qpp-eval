@@ -1,8 +1,11 @@
-package org.retriever;
+package org.experiments;
 
 import java.io.*;
 import java.util.*;
 
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
+import org.correlation.QPPCorrelationMetric;
+import org.correlation.SpearmanCorrelation;
 import org.qpp.*;
 import org.evaluator.Evaluator;
 import org.evaluator.Metric;
@@ -26,26 +29,16 @@ public class QPPEvaluator {
     IndexSearcher searcher;
     int numWanted;
     Properties prop;
-    String runName;
     Map<String, TopDocs> topDocsMap;
     QPPCorrelationMetric correlationMetric;
 
-    public QPPEvaluator(Properties prop, QPPCorrelationMetric correlationMetric) {
+    public QPPEvaluator(Properties prop, QPPCorrelationMetric correlationMetric, IndexSearcher searcher, int numWanted) {
         this.prop = prop;
+        this.searcher = searcher;
+        this.reader = searcher.getIndexReader();
 
-        try {
-            File indexDir = new File(prop.getProperty("index.dir"));
-            System.out.println("Running queries against index: " + indexDir.getPath());
-
-            reader = DirectoryReader.open(FSDirectory.open(indexDir.toPath()));
-            searcher = new IndexSearcher(reader);
-            numWanted = Integer.parseInt(prop.getProperty("retrieve.num_wanted", "1000"));
-            runName = prop.getProperty("retrieve.runname", "lm");
-            this.correlationMetric = correlationMetric;
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        this.numWanted = numWanted;
+        this.correlationMetric = correlationMetric;
     }
 
     public String getContentFieldName() {
@@ -178,14 +171,14 @@ public class QPPEvaluator {
 
     QPPMethod[] qppMethods() {
         QPPMethod[] qppMethods = {
-                new AvgIDFSpecificity(searcher),
-                new NQCSpecificity(searcher),
-                new ClaritySpecificity(searcher),
+                //new MaxIDFSpecificity(searcher),
+                //new AvgIDFSpecificity(searcher),
+                //new NQCSpecificity(searcher),
+                //new ClaritySpecificity(searcher),
                 new WIGSpecificity(searcher),
-                new UEFSpecificity(new AvgIDFSpecificity(searcher)),
-                new UEFSpecificity(new NQCSpecificity(searcher)),
-                new UEFSpecificity(new ClaritySpecificity(searcher)),
-                new UEFSpecificity(new WIGSpecificity(searcher)),
+                //new UEFSpecificity(new NQCSpecificity(searcher)),
+                //new UEFSpecificity(new ClaritySpecificity(searcher)),
+                //new UEFSpecificity(new WIGSpecificity(searcher)),
         };
         return qppMethods;
     }
@@ -421,27 +414,14 @@ public class QPPEvaluator {
         }
 
         try {
-            Properties prop = new Properties();
-            prop.load(new FileReader(args[0]));
+            SettingsLoader loader = new SettingsLoader(args[0]);
 
-            QPPCorrelationMetric[] qppCorrelationMetrics = {
-                    //new SpearmanCorrelation(),
-                    //new KendalCorrelation(),
-                    new QuantizedSimCorrelation(Integer.parseInt(prop.getProperty("qsim.numintervals", "5")))
-                    //new QuantizedStrictMatchCorrelation(Integer.parseInt(prop.getProperty("qsim.numintervals", "5")))
-            };
+            QPPEvaluator qppEvaluator = new QPPEvaluator(
+                    loader.getProp(),
+                    loader.getCorrelationMetric(), loader.getSearcher(), loader.getNumWanted());
+            List<TRECQuery> queries = qppEvaluator.constructQueries();
+            qppEvaluator.evaluateQPPAtCutoff(loader.getQPPMethod(), queries, loader.getNumWanted());
 
-            for (QPPCorrelationMetric correlationMetric: qppCorrelationMetrics) {
-                QPPEvaluator qppEvaluator = new QPPEvaluator(prop, correlationMetric);
-                List<TRECQuery> queries = qppEvaluator.constructQueries();
-                qppEvaluator.evaluateQPPAtCutoff(queries);
-
-                //No need to test with all cutoffs
-                //qppEvaluator.evaluateQPPAllWithCutoffs(queries);
-
-                //qppEvaluator.relativeSystemRanksAcrossSims(queries);
-                //qppEvaluator.relativeSystemRanksAcrossMetrics(queries);
-            }
         }
         catch (Exception ex) {
             ex.printStackTrace();

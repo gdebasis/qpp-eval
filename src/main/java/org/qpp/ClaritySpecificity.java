@@ -8,7 +8,7 @@ import org.feedback.RelevanceModelIId;
 import org.evaluator.RetrievedResults;
 import org.trec.TRECQuery;
 
-public class ClaritySpecificity extends AvgIDFSpecificity {
+public class ClaritySpecificity extends BaseIDFSpecificity {
     public ClaritySpecificity(IndexSearcher searcher) {
         super(searcher);
     }
@@ -26,7 +26,7 @@ public class ClaritySpecificity extends AvgIDFSpecificity {
 
     @Override
     public String name() {
-        return "Clarity";
+        return "clarity";
     }
 
 }

@@ -11,10 +11,10 @@ import org.trec.TRECQuery;
 import java.util.Arrays;
 
 public class UEFSpecificity implements QPPMethod {
-    AvgIDFSpecificity qppMethod;
+    BaseIDFSpecificity qppMethod;
     RelevanceModelIId rlm;
 
-    public UEFSpecificity(AvgIDFSpecificity qppMethod) {
+    public UEFSpecificity(BaseIDFSpecificity qppMethod) {
         this.qppMethod = qppMethod;
     }
 
@@ -69,6 +69,6 @@ public class UEFSpecificity implements QPPMethod {
 
     @Override
     public String name() {
-        return String.format("UEF (%s)", this.qppMethod.name());
+        return String.format("uef_%s", this.qppMethod.name());
     }
 }

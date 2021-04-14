@@ -12,11 +12,11 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-public class AvgIDFSpecificity implements QPPMethod {
+public class BaseIDFSpecificity implements QPPMethod {
     IndexReader reader;
     IndexSearcher searcher;
 
-    public AvgIDFSpecificity(IndexSearcher searcher) {
+    public BaseIDFSpecificity(IndexSearcher searcher) {
         this.searcher = searcher;
         this.reader = searcher.getIndexReader();
     }
@@ -25,7 +25,7 @@ public class AvgIDFSpecificity implements QPPMethod {
     public double computeSpecificity(Query q, RetrievedResults retInfo, TopDocs topDocs, int k) {
         double specificity = 0;
         try {
-            specificity = averageIDF(q);
+            specificity = maxIDF(q);
         }
         catch (IOException ex) {
             ex.printStackTrace();
@@ -33,22 +33,23 @@ public class AvgIDFSpecificity implements QPPMethod {
         return specificity;
     }
 
-    double averageIDF(Query q) throws IOException {
+    double maxIDF(Query q) throws IOException {
         long N = reader.numDocs();
         Set<Term> qterms = new HashSet<>();
         q.createWeight(searcher, ScoreMode.COMPLETE, 1).extractTerms(qterms);
 
-        float aggregated_idf = 0;
+        double aggregated_idf = 0;
         for (Term t: qterms) {
             int n = reader.docFreq(t);
             double idf = Math.log(N/(double)n);
-            aggregated_idf += idf;
+            if (idf > aggregated_idf)
+                aggregated_idf = idf;
         }
-        return aggregated_idf/(double)qterms.size();
+        return aggregated_idf;
     }
 
     @Override
     public String name() {
-        return "avgidf";
+        return "MaxIDF";
     }
 }

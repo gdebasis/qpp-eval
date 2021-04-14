@@ -1,4 +1,4 @@
-package org.retriever;
+package org.correlation;
 import java.util.Arrays;
 
 public class MinMaxNormalizer {

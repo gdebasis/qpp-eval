@@ -101,12 +101,30 @@
     <version>1.6.0</version>
     <executions>
         <execution>
-            <id>qppeval</id>
+            <id>method_metric_pair</id>
             <goals>
                 <goal>java</goal>
             </goals>
             <configuration>
-                <mainClass>org.retriever.QPPEvaluator</mainClass>
+                <mainClass>org.experiments.QPPEvaluator</mainClass>
+            </configuration>
+        </execution>
+        <execution>
+            <id>across_models</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.CorrelationAcrossModels</mainClass>
+            </configuration>
+        </execution>
+        <execution>
+            <id>across_metrics</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.CorrelationAcrossMetrics</mainClass>
             </configuration>
         </execution>
     </executions>

@@ -1,4 +1,4 @@
-package org.retriever;
+package org.correlation;
 
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 

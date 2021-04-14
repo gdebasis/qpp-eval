@@ -9,7 +9,7 @@ import org.trec.TRECQuery;
 
 import java.util.Set;
 
-public class WIGSpecificity extends AvgIDFSpecificity {
+public class WIGSpecificity extends BaseIDFSpecificity {
 
     public WIGSpecificity(IndexSearcher searcher) {
         super(searcher);
@@ -23,7 +23,7 @@ public class WIGSpecificity extends AvgIDFSpecificity {
         try {
             Set<Term> qterms = new TRECQuery(q).getQueryTerms(searcher);
             numQueryTerms = qterms.size();
-            avgIDF = 1/averageIDF(q);
+            avgIDF = 1/maxIDF(q);
         }
         catch (Exception ex) { ex.printStackTrace(); }
 
@@ -36,6 +36,6 @@ public class WIGSpecificity extends AvgIDFSpecificity {
 
     @Override
     public String name() {
-        return "WIG";
+        return "wig";
     }
 }
