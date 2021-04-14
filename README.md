@@ -39,6 +39,9 @@ Note that this only works if you want to run your experiments on the TREC Robust
 
 The next step would be to configure the query set, e.g. the TREC 8 topic set (query ids: 401 to 450). For this you have to set the `query.file`. The `qrels.file` points to the relevance judgments, which you would need to evaluate the effectiveness of the query performance prediction (QPP).
 
+
+## Example Script
+
 An example [script](https://github.com/gdebasis/qpp-eval/blob/main/qppeval.sh) to run experiments on the TREC-8 topic set is provided.
 A sample invocation of the script is
 ```
