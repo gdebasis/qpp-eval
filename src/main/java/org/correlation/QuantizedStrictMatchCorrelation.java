@@ -21,6 +21,6 @@ public class QuantizedStrictMatchCorrelation extends QuantizedSimCorrelation {
 
     @Override
     public String name() {
-        return "qc_strict";
+        return "qsim_strict";
     }
 }

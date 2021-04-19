@@ -42,6 +42,6 @@ public class QuantizedSimCorrelation implements QPPCorrelationMetric {
 
     @Override
     public String name() {
-        return "qc";
+        return "qsim";
     }
 }

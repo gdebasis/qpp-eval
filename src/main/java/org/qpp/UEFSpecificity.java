@@ -35,19 +35,21 @@ public class UEFSpecificity implements QPPMethod {
         int[] docIdsB = getTopDocNames(listB);
 
         Arrays.sort(docIdsB);
-        int posInA = 0, posInB, delRank;
+        int posInA = 0, posInB;
+        double delRank;
         double avgShift = 0;
+
         for (int docId: docIdsA) {
             posInB = Arrays.binarySearch(docIdsB, docId);
             if (posInB >= 0) {
-                delRank = posInA - posInB;
+                delRank = (posInA - posInB)/(double)docIdsA.length;
                 avgShift += delRank * delRank;
             }
             posInA++;
         }
 
         avgShift = avgShift/(double)docIdsA.length;
-        avgShift = Math.sqrt(avgShift);
+        //avgShift = Math.sqrt(avgShift);
         return avgShift;
     }
 
@@ -64,7 +66,7 @@ public class UEFSpecificity implements QPPMethod {
         }
 
         double rankSim = computeRankSimilarity(topDocs, topDocs_rr);
-        return rankSim * qppMethod.computeSpecificity(q, retInfo, topDocs, k);
+        return Math.exp(-rankSim) * qppMethod.computeSpecificity(q, retInfo, topDocs, k);
     }
 
     @Override

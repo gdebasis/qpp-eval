@@ -30,6 +30,7 @@ public class SettingsLoader {
             return;
 
         corrMetrics = new HashMap<>();
+        corrMetrics.put("r", new PearsonCorrelation());
         corrMetrics.put("rho", new SpearmanCorrelation());
         corrMetrics.put("tau", new KendalCorrelation());
         corrMetrics.put("qsim", new QuantizedSimCorrelation(Integer.parseInt(prop.getProperty("qsim.numintervals", "5"))));

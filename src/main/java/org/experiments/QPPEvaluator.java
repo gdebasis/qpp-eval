@@ -90,7 +90,7 @@ public class QPPEvaluator {
             new LMJelinekMercerSimilarity(0.6f),
             new LMDirichletSimilarity(1000),
             new BM25Similarity(1.5f, 0.75f),
-            new BM25Similarity(0.5f, 1.0f)
+            //new BM25Similarity(0.5f, 1.0f)
         };
     }
 
@@ -172,13 +172,13 @@ public class QPPEvaluator {
     QPPMethod[] qppMethods() {
         QPPMethod[] qppMethods = {
                 //new MaxIDFSpecificity(searcher),
-                //new AvgIDFSpecificity(searcher),
-                //new NQCSpecificity(searcher),
+                new AvgIDFSpecificity(searcher),
+                new NQCSpecificity(searcher),
                 //new ClaritySpecificity(searcher),
                 new WIGSpecificity(searcher),
-                //new UEFSpecificity(new NQCSpecificity(searcher)),
+                new UEFSpecificity(new NQCSpecificity(searcher)),
                 //new UEFSpecificity(new ClaritySpecificity(searcher)),
-                //new UEFSpecificity(new WIGSpecificity(searcher)),
+                new UEFSpecificity(new WIGSpecificity(searcher)),
         };
         return qppMethods;
     }

@@ -18,7 +18,7 @@ public class ClaritySpecificity extends BaseIDFSpecificity {
         try {
             RelevanceModelIId rlm = new RelevanceModelConditional(searcher, new TRECQuery(q), topDocs, k);
             rlm.computeFdbkWeights();
-            return rlm.getQueryClarity();
+            return rlm.getQueryClarity() * maxIDF(q);
         }
         catch (Exception ex) { ex.printStackTrace(); }
         return 0;
