@@ -19,6 +19,8 @@ public class SettingsLoader {
     static Map<String, QPPCorrelationMetric> corrMetrics;
     static Map<String, QPPMethod> qppMethods;
     static boolean initialized = false;
+    static int qppTopK;
+
 
     Properties prop;
     IndexReader reader;
@@ -47,6 +49,8 @@ public class SettingsLoader {
         qppMethods.put("uef_wig", new UEFSpecificity(new WIGSpecificity(searcher)));
         qppMethods.put("uef_clarity", new UEFSpecificity(new ClaritySpecificity(searcher)));
 
+        qppTopK = Integer.parseInt(prop.getProperty("qpp.numtopdocs"));
+
         initialized = true;
     }
 
@@ -67,6 +71,7 @@ public class SettingsLoader {
     public Properties getProp() { return prop; }
 
     public int getNumWanted() { return numWanted; }
+    public int getQppTopK() { return qppTopK; }
 
     public QPPCorrelationMetric getCorrelationMetric() {
         String key = prop.getProperty("qpp.metric");

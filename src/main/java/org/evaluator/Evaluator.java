@@ -177,7 +177,8 @@ class AllRetrievedResults {
         for (Map.Entry<String, RetrievedResults> e : allRetMap.entrySet()) {
             RetrievedResults res = e.getValue();
             PerQueryRelDocs thisRelInfo = relInfo.getRelInfo(String.valueOf(res.qid));
-            res.fillRelInfo(thisRelInfo);
+            if (thisRelInfo != null)
+                res.fillRelInfo(thisRelInfo);
         }
         this.allRelInfo = relInfo;
     }

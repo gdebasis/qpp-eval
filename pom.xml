@@ -127,6 +127,15 @@
                 <mainClass>org.experiments.CorrelationAcrossMetrics</mainClass>
             </configuration>
         </execution>
+        <execution>
+            <id>compute_all</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.QPPScoresFileWriter</mainClass>
+            </configuration>
+        </execution>
     </executions>
     </plugin>
     </plugins>
