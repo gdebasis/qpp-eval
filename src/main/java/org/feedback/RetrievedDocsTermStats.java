@@ -12,6 +12,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.trec.FieldConstants;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,7 +49,7 @@ public class RetrievedDocsTermStats {
         return termStats;
     }
     
-    public void buildAllStats() throws Exception {
+    public void buildAllStats() throws IOException {
         int rank = 0;
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
             int docId = scoreDoc.doc;
@@ -61,7 +62,7 @@ public class RetrievedDocsTermStats {
         return this.termStats.get(qTerm);        
     }
     
-    PerDocTermVector buildStatsForSingleDoc(int docId, int rank, float sim) throws Exception {
+    PerDocTermVector buildStatsForSingleDoc(int docId, int rank, float sim) throws IOException {
         String termText;
         BytesRef term;
         Terms tfvector;

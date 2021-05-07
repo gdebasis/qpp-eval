@@ -1,11 +1,12 @@
 package org.experiments;
 
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.evaluator.Evaluator;
 import org.evaluator.RetrievedResults;
-import org.qpp.QPPMethod;
+import org.qpp.*;
 import org.trec.TRECQuery;
 
 import java.io.BufferedWriter;
@@ -16,6 +17,15 @@ import java.util.List;
 import java.util.Map;
 
 public class QPPScoresFileWriter {
+
+    static public QPPMethod[] qppMethods(IndexSearcher searcher) {
+        QPPMethod[] qppMethods = {
+                new WIGSpecificity(searcher),
+                new UEFSpecificity(new WIGSpecificity(searcher)),
+        };
+        return qppMethods;
+    }
+
     public static void main(String[] args) {
         if (args.length < 1) {
             args = new String[1];
@@ -34,7 +44,7 @@ public class QPPScoresFileWriter {
                     loader.getCorrelationMetric(), loader.getSearcher(), loader.getNumWanted());
             List<TRECQuery> queries = qppEvaluator.constructQueries(queryFile);
 
-            QPPMethod[] qppMethods = qppEvaluator.qppMethods();
+            QPPMethod[] qppMethods = qppMethods(loader.getSearcher());
             Similarity sim = new LMDirichletSimilarity(1000);
 
             final int nwanted = loader.getNumWanted();
@@ -59,7 +69,7 @@ public class QPPScoresFileWriter {
                 buff.append(query.id).append("\t");
 
                 for (QPPMethod qppMethod: qppMethods) {
-                    //System.out.println(String.format("computing %s scores for qid %s", qppMethod.name(), query.id));
+                    System.out.println(String.format("computing %s scores for qid %s", qppMethod.name(), query.id));
                     RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
                     TopDocs topDocs = topDocsMap.get(query.title);
                     if (topDocs==null) {

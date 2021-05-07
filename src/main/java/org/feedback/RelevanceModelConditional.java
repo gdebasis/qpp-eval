@@ -10,6 +10,7 @@ import org.apache.lucene.search.TopDocs;
 import org.trec.TRECQuery;
 
 import java.util.Map;
+import java.io.IOException;
 
 /**
  *
@@ -17,12 +18,12 @@ import java.util.Map;
  */
 public class RelevanceModelConditional extends RelevanceModelIId {
 
-    public RelevanceModelConditional(IndexSearcher searcher, TRECQuery trecQuery, TopDocs topDocs, int numTopDocs) throws Exception {
+    public RelevanceModelConditional(IndexSearcher searcher, TRECQuery trecQuery, TopDocs topDocs, int numTopDocs) {
         super(searcher, trecQuery, topDocs, numTopDocs);
     }
     
     @Override
-    public void computeFdbkWeights() throws Exception {
+    public void computeFdbkWeights() throws IOException {
         float p_w;
         float this_wt; // phi(q,w)
         

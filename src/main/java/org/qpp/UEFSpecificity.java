@@ -1,18 +1,24 @@
 package org.qpp;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.feedback.RelevanceModelConditional;
 import org.feedback.RelevanceModelIId;
 import org.evaluator.RetrievedResults;
 import org.trec.TRECQuery;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.util.*;
 
 public class UEFSpecificity implements QPPMethod {
     BaseIDFSpecificity qppMethod;
     RelevanceModelIId rlm;
+    static final int SEED = 314159; // first six digits of pi - a beautiful seed!
+    static Random rnd = new Random(SEED);
+    static final int NUM_SAMPLES = 10;
 
     public UEFSpecificity(BaseIDFSpecificity qppMethod) {
         this.qppMethod = qppMethod;
@@ -30,7 +36,7 @@ public class UEFSpecificity implements QPPMethod {
     // instead of using a rank correlation metric (where we need to supply two lists of float),
     // we compute the average shift in the ranks of items.
     // Assumption: |listA \cap listB| = |listA| = |listB|
-    static public double computeRankSimilarity(TopDocs listA, TopDocs listB) {
+    static public double computeRankDist(TopDocs listA, TopDocs listB) {
         int[] docIdsA = getTopDocNames(listA);
         int[] docIdsB = getTopDocNames(listB);
 
@@ -49,24 +55,39 @@ public class UEFSpecificity implements QPPMethod {
         }
 
         avgShift = avgShift/(double)docIdsA.length;
-        //avgShift = Math.sqrt(avgShift);
+        avgShift = Math.sqrt(avgShift);
         return avgShift;
+    }
+
+    TopDocs sampleTopDocs(TopDocs topDocs, int M, int k) {
+        ScoreDoc[] sampledScoreDocs = new ScoreDoc[k];
+        List<ScoreDoc> sdList = new ArrayList(Arrays.asList(topDocs.scoreDocs));
+        Collections.shuffle(sdList, rnd);
+        sampledScoreDocs = sdList.subList(0, Math.min(topDocs.scoreDocs.length, k)).toArray(sampledScoreDocs);
+        return new TopDocs(new TotalHits(k, TotalHits.Relation.EQUAL_TO), sampledScoreDocs);
     }
 
     @Override
     public double computeSpecificity(Query q, RetrievedResults retInfo, TopDocs topDocs, int k) {
         TopDocs topDocs_rr = null;
-        try {
-            RelevanceModelIId rlm = new RelevanceModelConditional(qppMethod.searcher, new TRECQuery(q), topDocs, k);
-            rlm.computeFdbkWeights();
-            topDocs_rr = rlm.rerankDocs();
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        double avgRankDist = 0;
+        RelevanceModelIId rlm = null;
 
-        double rankSim = computeRankSimilarity(topDocs, topDocs_rr);
-        return Math.exp(-rankSim) * qppMethod.computeSpecificity(q, retInfo, topDocs, k);
+        for (int i=0; i < NUM_SAMPLES; i++) {
+            TopDocs sampledTopDocs = sampleTopDocs(topDocs, 3 * k, k);
+            try {
+                rlm = new RelevanceModelConditional(
+                    qppMethod.searcher, new TRECQuery(q), sampledTopDocs, k);
+                rlm.computeFdbkWeights();
+            }
+            catch (NullPointerException nex) { continue; /* next sample */ }
+            catch (IOException ioex) { ioex.printStackTrace(); }
+
+            topDocs_rr = rlm.rerankDocs();
+            double rankDist = computeRankDist(topDocs, topDocs_rr);
+            avgRankDist += rankDist;
+        }
+        return ((double)NUM_SAMPLES/avgRankDist) * qppMethod.computeSpecificity(q, retInfo, topDocs, k);
     }
 
     @Override

@@ -2,7 +2,7 @@
 
 if [ $# -lt 4 ]
 then
-	echo "usage: $0 <num docs to retrieve (e.g. 100)> <num-top docs for qpp-estimation (e.g. 50) <method (avgidf/nqc/wig/clarity/uef_nqc,/uef_wig/uef_clarity)> <metric (rho/tau/qsim/qsim_strict/pairacc)>>"
+	echo "usage: $0 <num docs to retrieve (e.g. 100)> <num-top docs for qpp-estimation (e.g. 50) <method (avgidf/nqc/wig/clarity/uef_nqc,/uef_wig/uef_clarity)> <metric (r/rho/tau/qsim/qsim_strict/pairacc)>>"
 	exit
 fi
 
@@ -32,4 +32,6 @@ mvn exec:java@method_metric_pair -Dexec.args="qpp.properties" > res.txt
 
 rm qpp.properties
 
-grep -w $METRIC res.txt | grep "QPP-method: $METHOD" | awk '{print $NF}' | awk '{s=$1" "s; if (NR%4==0) {print s; s=""}}' 
+echo "$METHOD $METRIC"
+echo "BM25 (k=0.5, b=1) BM25 (k=1.5, b=0.75) LM-Dir (1000) LM-JM (0.6)"
+grep -w $METRIC res.txt | grep "QPP-method: $METHOD" | awk '{print $NF}' | awk '{s=$1" "s; if (NR%3==0) {print s; s=""}}' 

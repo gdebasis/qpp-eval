@@ -9,6 +9,8 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.trec.TRECQuery;
+
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -39,7 +41,7 @@ public class RelevanceModelIId {
     static final float FBWEIGHT = 0.2f;
 
 
-    public RelevanceModelIId(IndexSearcher searcher, TRECQuery trecQuery, TopDocs topDocs, int numTopDocs) throws Exception {
+    public RelevanceModelIId(IndexSearcher searcher, TRECQuery trecQuery, TopDocs topDocs, int numTopDocs) {
         this.reader = searcher.getIndexReader();
         this.searcher = searcher;
         this.trecQuery = trecQuery;
@@ -52,7 +54,7 @@ public class RelevanceModelIId {
         return this.retrievedDocsTermStats;
     }
     
-    public void buildTermStats() throws Exception {
+    public void buildTermStats() throws IOException {
         retrievedDocsTermStats = new
                 RetrievedDocsTermStats(reader, topDocs, numTopDocs);
         retrievedDocsTermStats.buildAllStats();
@@ -70,7 +72,7 @@ public class RelevanceModelIId {
                 (1-mixingLambda)*wGlobalInfo.getDf()/retrievedDocsTermStats.sumDf;
     }
 
-    public void computeFdbkWeights() throws Exception {
+    public void computeFdbkWeights() throws IOException {
         float p_q;
         float p_w;
         

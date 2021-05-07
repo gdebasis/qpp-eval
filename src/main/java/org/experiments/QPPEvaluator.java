@@ -84,12 +84,12 @@ public class QPPEvaluator {
         return parser.getQueries();
     }
 
-    TopDocs retrieve(TRECQuery query, Similarity sim, int numWanted) throws IOException {
+    public TopDocs retrieve(TRECQuery query, Similarity sim, int numWanted) throws IOException {
         searcher.setSimilarity(sim);
         return searcher.search(query.getLuceneQueryObj(), numWanted);
     }
 
-    Similarity[] modelsToTest() {
+    public static Similarity[] modelsToTest() {
         return new Similarity[]{
             new LMJelinekMercerSimilarity(0.6f),
             new LMDirichletSimilarity(1000),
@@ -127,7 +127,8 @@ public class QPPEvaluator {
 
         for (TRECQuery query : queries) {
             TopDocs topDocs = retrieve(query, sim, cutoff);
-            topDocsMap.put(query.title, topDocs);
+            if (topDocsMap != null)
+                topDocsMap.put(query.title, topDocs);
             saveRetrievedTuples(bw, query, topDocs, sim.toString());
         }
         bw.flush();
@@ -204,6 +205,14 @@ public class QPPEvaluator {
                 new WIGSpecificity(searcher),
                 new UEFSpecificity(new NQCSpecificity(searcher)),
                 //new UEFSpecificity(new ClaritySpecificity(searcher)),
+                new UEFSpecificity(new WIGSpecificity(searcher)),
+        };
+        return qppMethods;
+    }
+
+    public QPPMethod[] quickTestQppMethods() {
+        QPPMethod[] qppMethods = {
+                new WIGSpecificity(searcher),
                 new UEFSpecificity(new WIGSpecificity(searcher)),
         };
         return qppMethods;
@@ -370,7 +379,7 @@ public class QPPEvaluator {
     }
 
     public void evaluateQPPAtCutoff(List<TRECQuery> queries) throws Exception {
-        QPPMethod[] qppMethods = qppMethods();
+        QPPMethod[] qppMethods = quickTestQppMethods();
         for (QPPMethod qppMethod: qppMethods) {
             evaluateQPPAtCutoff(qppMethod, queries, numWanted);
         }
@@ -447,8 +456,8 @@ public class QPPEvaluator {
                     loader.getProp(),
                     loader.getCorrelationMetric(), loader.getSearcher(), loader.getNumWanted());
             List<TRECQuery> queries = qppEvaluator.constructQueries();
-            qppEvaluator.evaluateQPPAtCutoff(loader.getQPPMethod(), queries, loader.getNumWanted());
-
+            //qppEvaluator.evaluateQPPAtCutoff(loader.getQPPMethod(), queries, loader.getNumWanted());
+            qppEvaluator.evaluateQPPAtCutoff(queries);
         }
         catch (Exception ex) {
             ex.printStackTrace();
