@@ -9,9 +9,9 @@ This easy-to-manage tool could be used by Information Retrieval (IR) researchers
 This tool uses [Apache Lucene](https://lucene.apache.org/) for retrieval.
 Currently, the following query performance prediction (QPP) models are implemented within the system.
 
-1. Normalized Query Commitment (NQC) (more details in [paper](https://ie.technion.ac.il/~kurland/qdQueryPerf.pdf))
-2. Weighted Information Gain (WIG) (more details in [paper](http://maroo.cs.umass.edu/getpdf.php?id=792))
-3. Average IDF, (more information in [thesis](https://chauff.github.io/documents/publications/thesis.pdf))
+1. Normalized Query Commitment (NQC) (more details in this [paper](https://ie.technion.ac.il/~kurland/qdQueryPerf.pdf))
+2. Weighted Information Gain (WIG) (more details in this [paper](http://maroo.cs.umass.edu/getpdf.php?id=792))
+3. Average IDF, (more information in this [thesis](https://chauff.github.io/documents/publications/thesis.pdf))
 
 ## Installing the tool
 
