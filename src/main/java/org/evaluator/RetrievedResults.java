@@ -60,6 +60,9 @@ public class RetrievedResults implements Comparable<RetrievedResults> {
         if (avgP > -1)
             return avgP;
 
+        if (relInfo == null)
+            return 0;
+
         float prec = 0;
         int numRel = relInfo.numRel;
         int numRelSeen = 0;

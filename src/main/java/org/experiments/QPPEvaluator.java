@@ -126,7 +126,7 @@ public class QPPEvaluator {
         for (TRECQuery query : queries) {
             TopDocs topDocs = retrieve(query, sim, cutoff);
             if (topDocsMap != null)
-                topDocsMap.put(query.title, topDocs);
+                topDocsMap.put(query.id, topDocs);
             saveRetrievedTuples(bw, query, topDocs, sim.toString());
         }
         bw.flush();
@@ -182,9 +182,9 @@ public class QPPEvaluator {
 
         for (TRECQuery query : queries) {
             RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
-            TopDocs topDocs = topDocsMap.get(query.title);
+            TopDocs topDocs = topDocsMap.get(query.id);
             if (topDocs==null) {
-                System.err.println("No Topdocs found for query <" + query.title + ">");
+                System.err.println("No Topdocs found for query <" + query.id + ">");
                 System.exit(1);
             }
             qppEstimates[i] = qppMethod.computeSpecificity(query.getLuceneQueryObj(), rr, topDocs, qppTopK);

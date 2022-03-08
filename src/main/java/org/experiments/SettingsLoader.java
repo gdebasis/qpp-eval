@@ -21,7 +21,6 @@ public class SettingsLoader {
     static boolean initialized = false;
     static int qppTopK;
 
-
     Properties prop;
     IndexReader reader;
     IndexSearcher searcher;

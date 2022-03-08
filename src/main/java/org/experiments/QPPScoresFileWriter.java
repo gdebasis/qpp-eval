@@ -71,9 +71,9 @@ public class QPPScoresFileWriter {
                 for (QPPMethod qppMethod: qppMethods) {
                     System.out.println(String.format("computing %s scores for qid %s", qppMethod.name(), query.id));
                     RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
-                    TopDocs topDocs = topDocsMap.get(query.title);
+                    TopDocs topDocs = topDocsMap.get(query.id);
                     if (topDocs==null) {
-                        System.err.println("No Topdocs found for query <" + query.title + ">");
+                        System.err.println("No Topdocs found for query <" + query.id + ">");
                         System.exit(1);
                     }
 

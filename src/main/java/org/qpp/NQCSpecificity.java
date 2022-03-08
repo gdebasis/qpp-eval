@@ -23,6 +23,7 @@ public class NQCSpecificity extends BaseIDFSpecificity {
     private double computeNQC(Query q, RetrievedResults topDocs, int k) {
         double[] rsvs = topDocs.getRSVs(k);
         double mean = Arrays.stream(rsvs).average().getAsDouble();
+        //double mean = new StandardDeviation().evaluate(rsvs);
 
         double avgIDF = 0;
         double nqc = 0;
