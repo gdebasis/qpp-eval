@@ -9,10 +9,17 @@ import org.evaluator.RetrievedResults;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class NQCSpecificity extends BaseIDFSpecificity {
+public class NQCCalibratedSpecificity extends BaseIDFSpecificity {
+    float alpha, beta, gamma;
 
-    public NQCSpecificity(IndexSearcher searcher) {
+    public NQCCalibratedSpecificity(IndexSearcher searcher) {
         super(searcher);
+    }
+
+    public void setParameters(float alpha, float beta, float gamma) {
+        this.alpha = alpha;
+        this.beta = beta;
+        this.gamma = gamma;
     }
 
     @Override
@@ -25,25 +32,30 @@ public class NQCSpecificity extends BaseIDFSpecificity {
         double mean = Arrays.stream(rsvs).average().getAsDouble();
 
         double avgIDF = 0;
-        double nqc = 0;
-        double del;
-        for (double rsv: rsvs) {
-            del = rsv - mean;
-            nqc += del*del;
-        }
-        nqc /= (double)rsvs.length;
-
         try {
             avgIDF = maxIDF(q);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+
+        double nqc = 0;
+        for (double rsv: rsvs) {
+            double factor_1 = avgIDF;
+            double factor_2 = (rsv - mean)/Math.sqrt(rsv) ;
+
+            double prod = Math.pow(factor_1, alpha) * Math.pow(factor_2, beta);
+            prod = Math.pow(prod, gamma);
+
+            nqc += prod;
+        }
+        nqc /= (double)rsvs.length;
+
         return nqc * avgIDF; // high variance, high avgIDF -- more specificity
     }
 
     @Override
     public String name() {
-        return "nqc";
+        return "nqc_generic";
     }
 }

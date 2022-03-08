@@ -120,8 +120,6 @@ public class QPPEvaluator {
                                     int cutoff, String qrelsFile, String resFile, Map<String, TopDocs> topDocsMap) throws Exception {
 
         int numQueries = queries.size();
-        double[] evaluatedMetricValues = new double[numQueries];
-
         FileWriter fw = new FileWriter(resFile);
         BufferedWriter bw = new BufferedWriter(fw);
 

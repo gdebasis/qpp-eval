@@ -43,6 +43,7 @@ public class SettingsLoader {
 
         qppMethods.put("avgidf", new AvgIDFSpecificity(searcher));
         qppMethods.put("nqc", new NQCSpecificity(searcher));
+        qppMethods.put("nqc_sc", new NQCCalibratedSpecificity(searcher));
         qppMethods.put("wig", new WIGSpecificity(searcher));
         qppMethods.put("clarity", new ClaritySpecificity(searcher));
         qppMethods.put("uef_nqc", new UEFSpecificity(new NQCSpecificity(searcher)));
