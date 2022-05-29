@@ -34,9 +34,16 @@ public class RetrievedDocTermInfo implements Comparable<RetrievedDocTermInfo> {
     
     public String getTerm() { return term; }
     public void incrementDF() { df++; }
+    public void setDf(int df) { this.df = df; }
+    public void incrementTf(int tf) { this.tf += tf; }
 
     public int getDf() { return df; }
     public int getTf() { return tf; }
     public void setTf(int tf) { this.tf = tf; }
+
+    @Override
+    public String toString() {
+        return term + ", " + getWeight();
+    }
 }
 

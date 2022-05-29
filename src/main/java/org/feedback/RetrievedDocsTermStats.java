@@ -12,7 +12,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.trec.FieldConstants;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,9 +24,8 @@ import java.util.Map;
 public class RetrievedDocsTermStats {
     TopDocs topDocs;
     IndexReader reader;
-    int sumTf;
+    private int sumTf;
     float sumDf;
-    float sumSim;
     Map<String, RetrievedDocTermInfo> termStats;
     List<PerDocTermVector> docTermVecs;
     int numTopDocs;
@@ -36,20 +34,31 @@ public class RetrievedDocsTermStats {
             TopDocs topDocs, int numTopDocs) {
         this.topDocs = topDocs;
         this.reader = reader;
-        sumTf = 0;
         sumDf = numTopDocs;
         termStats = new HashMap<>();
         docTermVecs = new ArrayList<>();
         this.numTopDocs = numTopDocs;
     }
-    
+
+    public PerDocTermVector getDocTermVecs(int i) {
+        return docTermVecs.get(i);
+    }
+
+    public int sumTf() {
+        if (sumTf==0)
+            sumTf = termStats.values().stream().map(x->x.getTf()).reduce(0, (a,b)->a+b);
+        return sumTf;
+    }
+
     public IndexReader getReader() { return reader; }
-    
+
+    public float getSumDf() { return sumDf; }
+
     public Map<String, RetrievedDocTermInfo> getTermStats() {
         return termStats;
     }
     
-    public void buildAllStats() throws IOException {
+    public void buildAllStats() throws Exception {
         int rank = 0;
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
             int docId = scoreDoc.doc;
@@ -58,11 +67,11 @@ public class RetrievedDocsTermStats {
         }
     }
     
-    RetrievedDocTermInfo getTermStats(String qTerm) {
+    public RetrievedDocTermInfo getTermStats(String qTerm) {
         return this.termStats.get(qTerm);        
     }
     
-    PerDocTermVector buildStatsForSingleDoc(int docId, int rank, float sim) throws IOException {
+    PerDocTermVector buildStatsForSingleDoc(int docId, int rank, float sim) throws Exception {
         String termText;
         BytesRef term;
         Terms tfvector;
@@ -85,8 +94,6 @@ public class RetrievedDocsTermStats {
             
             // per-doc
             docTermVector.perDocStats.put(termText, new RetrievedDocTermInfo(termText, tf));
-            docTermVector.sum_tf += tf;
-            
             if (rank >= numTopDocs) {
                 continue;
             }
@@ -95,13 +102,12 @@ public class RetrievedDocsTermStats {
             trmInfo = termStats.get(termText);
             if (trmInfo == null) {
                 trmInfo = new RetrievedDocTermInfo(termText);
-                termStats.put(termText, trmInfo);
             }
-            trmInfo.setWeight(trmInfo.getTf() + tf);
+            trmInfo.incrementTf(tf);
             trmInfo.incrementDF();
-            sumTf += tf;
-            sumSim += sim;
+            termStats.put(termText, trmInfo);
         }
+    	docTermVector.setSumTf();
         return docTermVector;
     }
 }

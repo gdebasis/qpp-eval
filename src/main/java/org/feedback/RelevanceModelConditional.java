@@ -18,29 +18,33 @@ import java.io.IOException;
  */
 public class RelevanceModelConditional extends RelevanceModelIId {
 
-    public RelevanceModelConditional(IndexSearcher searcher, TRECQuery trecQuery, TopDocs topDocs, int numTopDocs) {
+    public RelevanceModelConditional(IndexSearcher searcher, TRECQuery trecQuery, TopDocs topDocs, int numTopDocs) throws Exception {
         super(searcher, trecQuery, topDocs, numTopDocs);
     }
     
     @Override
-    public void computeFdbkWeights() throws IOException {
+    public void computeFdbkWeights() throws IOException, Exception {
         float p_w;
         float this_wt; // phi(q,w)
         
         buildTermStats();
         
         int docsSeen = 0;
+        float sumSim = this.retrievedDocsTermStats.docTermVecs
+                        .stream()
+                        .map(x->x.sim)
+                        .reduce(0.0f, (a, b) -> a + b)
+        ;
 
         // For each doc in top ranked
         for (PerDocTermVector docvec : this.retrievedDocsTermStats.docTermVecs) {            
             // For each word in this document
-            for (Map.Entry<String, RetrievedDocTermInfo> e : docvec.perDocStats.entrySet()) {
-                RetrievedDocTermInfo w = e.getValue();
+            for (RetrievedDocTermInfo w : docvec.perDocStats.values()) {
+                RetrievedDocTermInfo wGlobal = retrievedDocsTermStats.getTermStats(w.getTerm());
                 p_w = mixTfIdf(w, docvec);
-                this_wt = p_w * docvec.sim/this.retrievedDocsTermStats.sumSim;
+                this_wt = p_w * docvec.sim/sumSim;
                 
                 // Take the average
-                RetrievedDocTermInfo wGlobal = retrievedDocsTermStats.getTermStats(w.getTerm());
                 wGlobal.setWeight(wGlobal.getWeight() + this_wt);
             }
             docsSeen++;
@@ -48,6 +52,4 @@ public class RelevanceModelConditional extends RelevanceModelIId {
                 break;
         }  
     }
-    
-    
 }

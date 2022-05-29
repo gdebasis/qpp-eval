@@ -1,5 +1,7 @@
 package org.correlation;
 
+import java.util.Map;
+
 public class PairwiseAccuracyMetric implements QPPCorrelationMetric {
 
     boolean[][] computePairComparisons(double[] x) {
@@ -28,7 +30,7 @@ public class PairwiseAccuracyMetric implements QPPCorrelationMetric {
         }
         return c/(double)n; // normalize by n(n-1)/2
     }
-
+    
     @Override
     public String name() {
         return "pairacc";

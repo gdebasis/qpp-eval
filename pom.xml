@@ -136,6 +136,60 @@
                 <mainClass>org.experiments.QPPScoresFileWriter</mainClass>
             </configuration>
         </execution>
+        <execution>
+            <id>linear_regressor</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.QPPLinearRegressor</mainClass>
+            </configuration>
+        </execution>
+        <execution>
+            <id>poly_regressor</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.QPPPolynomialRegressor</mainClass>
+            </configuration>
+        </execution>
+        <execution>
+            <id>nqc_calibrate</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.NQCCalibrationWorkflow</mainClass>
+            </configuration>
+        </execution>
+        <execution>
+            <id>rls_predict</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.RLSWorkflow</mainClass>
+            </configuration>
+        </execution>
+        <execution>
+            <id>pfr_predict</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.experiments.PRFSpecificityWorkflow</mainClass>
+            </configuration>
+        </execution>
+        <execution>
+            <id>deptheval</id>
+            <goals>
+                <goal>java</goal>
+            </goals>
+            <configuration>
+                <mainClass>org.pooling.DepthPoolingWorkflow</mainClass>
+            </configuration>
+        </execution>
     </executions>
     </plugin>
     </plugins>

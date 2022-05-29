@@ -1,5 +1,7 @@
 package org.correlation;
 
+import java.util.Map;
+
 public class QuantizedSimCorrelation implements QPPCorrelationMetric {
     int numIntervals;
     double delta;
@@ -28,6 +30,9 @@ public class QuantizedSimCorrelation implements QPPCorrelationMetric {
 
     public double l2Dist(int[] x, int[] y) {
         int dist = 0;
+        System.out.println("Num intervals : " + numIntervals);
+        System.out.println("Delta : " + delta);
+
         int maxDist = numIntervals * x.length; // sqrt(dim) is the length between {0}^dim and {1}^dim
 
         for (int i=0; i < x.length; i++) {
@@ -39,7 +44,7 @@ public class QuantizedSimCorrelation implements QPPCorrelationMetric {
         }
         return dist/(double)maxDist; // normalized dist
     }
-
+    
     @Override
     public String name() {
         return "qsim";

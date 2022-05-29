@@ -1,7 +1,12 @@
 package org.correlation;
 import java.util.Arrays;
+import java.util.Map;
 
 public class MinMaxNormalizer {
+    public static double normalize(double x, double min, double max) {
+        return (x-min)/(max-min);
+    }
+
     public static double[] normalize(double[] x) {
         double[] z = new double[x.length];
         double min = Arrays.stream(x).min().getAsDouble();

@@ -2,36 +2,52 @@
 
 if [ $# -lt 4 ]
 then
-	echo "usage: $0 <num docs to retrieve (e.g. 100)> <num-top docs for qpp-estimation (e.g. 50) <method (avgidf/nqc/wig/clarity/uef_nqc,/uef_wig/uef_clarity)> <metric (r/rho/tau/qsim/qsim_strict/pairacc)>>"
-	exit
+    echo "Usage: " $0 " <following arguments in sequence>";
+    echo "1. Model (bm25/lmdir/lmjm)";
+    echo "2. Method (avgidf/nqc/wig/clarity/uef_nqc,/uef_wig/uef_clarity)";
+    echo "3. Retrieval Eval Metric (ap, p_10, recall, ndcg)";
+    echo "4. QPP eval Metric (r/rho/tau/qsim/qsim_strict/pairacc/class_acc/rmse)";
+    exit 1;
 fi
 
-METHOD=$3
+#These are hyper-parameters... usually these values work well
+NUMWANTED=100
+NUMTOP=100
+SPLITS=80
+
+MODEL=$1
+METHOD=$2
+RETEVAL_METRIC=$3
 METRIC=$4
-
-#Change this path to index/ (committed on git) after downloading the Lucene indexed
-#TREC disks 4/5 index from https://rsgqglln.tkhcloudstorage.com/item/c59086c6b00d41e79d53c58ad66bc21f
-INDEXDIR=/Users/debasis/research/common/trecd45/index/
-
-QRELS=data/qrels.trec8.adhoc
+INDEXDIR=/store/index/trec_robust_lucene8/
+QRELS=data/qrels.robust.all
+QUERYFILE=data/topics.401-450.xml
 
 cat > qpp.properties << EOF1
 
+ret.model=$MODEL
 index.dir=$INDEXDIR
-query.file=data/topics.401-450.xml
-res.file=res_
+query.file=$QUERYFILE
 qrels.file=$QRELS
-retrieve.num_wanted=$1
-qpp.numtopdocs=$2
+res.file=outputs/lmdir.res
+res.train=outputs/train.res
+res.test=outputs/test.res
+retrieve.num_wanted=$NUMWANTED
+reteval.metric=$RETEVAL_METRIC
+qpp.numtopdocs=$NUMTOP
 qpp.method=$METHOD
 qpp.metric=$METRIC
+qpp.splits=$SPLITS
+transform_scores=true
 
 EOF1
 
-mvn exec:java@method_metric_pair -Dexec.args="qpp.properties" > res.txt
+#mvn exec:java@method_metric_pair -Dexec.args="qpp.properties" > res.txt
+#mvn exec:java@compute_all -Dexec.args="qpp.properties"
+#mvn exec:java@across_metrics -Dexec.args="qpp.properties"
+#mvn exec:java@across_models -Dexec.args="qpp.properties"
+#mvn exec:java@linear_regressor -Dexec.args="qpp.properties"
+#mvn exec:java@poly_regressor -Dexec.args="qpp.properties"
+#mvn exec:java@nqc_calibrate -Dexec.args="qpp.properties"
+mvn exec:java@rls_predict -Dexec.args="qpp.properties"
 
-rm qpp.properties
-
-echo "$METHOD $METRIC"
-echo "BM25 (k=0.5, b=1) BM25 (k=1.5, b=0.75) LM-Dir (1000) LM-JM (0.6)"
-grep -w $METRIC res.txt | grep "QPP-method: $METHOD" | awk '{print $NF}' | awk '{s=$1" "s; if (NR%3==0) {print s; s=""}}' 

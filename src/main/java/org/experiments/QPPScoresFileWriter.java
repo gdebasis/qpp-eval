@@ -8,16 +8,13 @@ import org.evaluator.Evaluator;
 import org.evaluator.RetrievedResults;
 import org.qpp.*;
 import org.trec.TRECQuery;
-
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class QPPScoresFileWriter {
-
     static public QPPMethod[] qppMethods(IndexSearcher searcher) {
         QPPMethod[] qppMethods = {
                 new WIGSpecificity(searcher),
@@ -25,35 +22,37 @@ public class QPPScoresFileWriter {
         };
         return qppMethods;
     }
-
+    
     public static void main(String[] args) {
+
         if (args.length < 1) {
             args = new String[1];
-            args[0] = "init.properties";
+            args[0] = "qpp.properties";
         }
+        Settings.init(args[0]);
 
-        final String queryFile = "data/topics.robust.all";
-        final String resFile = "data/lmdir.all";
-        final String qrelsFile = "data/qrels.robust.all";
+        final String queryFile = Settings.getQueryFile();
+        final String resFile = Settings.RES_FILE;
+        final String qrelsFile = Settings.getQrelsFile();
 
         try {
-            SettingsLoader loader = new SettingsLoader(args[0]);
 
-            QPPEvaluator qppEvaluator = new QPPEvaluator(
-                    loader.getProp(),
-                    loader.getCorrelationMetric(), loader.getSearcher(), loader.getNumWanted());
+            QPPEvaluator qppEvaluator = new QPPEvaluator(Settings.getProp(),
+                    Settings.getCorrelationMetric(), Settings.getSearcher(), Settings.getNumWanted());
             List<TRECQuery> queries = qppEvaluator.constructQueries(queryFile);
 
-            QPPMethod[] qppMethods = qppMethods(loader.getSearcher());
+            QPPMethod[] qppMethods = qppEvaluator.qppMethods();
+            
             Similarity sim = new LMDirichletSimilarity(1000);
 
-            final int nwanted = loader.getNumWanted();
-            final int qppTopK = loader.getQppTopK();
+            final int nwanted = Settings.getNumWanted();
+            final int qppTopK = Settings.getQppTopK();
 
             Map<String, TopDocs> topDocsMap = new HashMap<>();
+           
             Evaluator evaluator = qppEvaluator.executeQueries(queries, sim, nwanted, qrelsFile, resFile, topDocsMap);
 
-            FileWriter fw = new FileWriter("qpp_scores.all.txt");
+            FileWriter fw = new FileWriter(Settings.RES_FILE);
             BufferedWriter bw = new BufferedWriter(fw);
             StringBuilder buff = new StringBuilder();
             buff.append("QID\t");
@@ -73,10 +72,9 @@ public class QPPScoresFileWriter {
                     RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
                     TopDocs topDocs = topDocsMap.get(query.id);
                     if (topDocs==null) {
-                        System.err.println("No Topdocs found for query <" + query.id + ">");
-                        System.exit(1);
+                        System.err.println(String.format("No Topdocs found for query %s", query.id.trim()));
+                        continue;
                     }
-
                     float qppEstimate = (float)qppMethod.computeSpecificity(query.getLuceneQueryObj(), rr, topDocs, qppTopK);
                     buff.append(qppEstimate).append("\t");
                 }
@@ -84,7 +82,7 @@ public class QPPScoresFileWriter {
                 bw.write(buff.toString());
                 bw.newLine();
             }
-
+            
             bw.close();
             fw.close();
         }

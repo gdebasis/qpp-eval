@@ -1,70 +1,47 @@
 package org.qpp;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
+import org.correlation.OverlapStats;
+import org.experiments.Settings;
 import org.feedback.RelevanceModelConditional;
 import org.feedback.RelevanceModelIId;
 import org.evaluator.RetrievedResults;
 import org.trec.TRECQuery;
 
+import java.util.Arrays;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import org.apache.lucene.search.TotalHits;
+
 
 public class UEFSpecificity implements QPPMethod {
     BaseIDFSpecificity qppMethod;
-    RelevanceModelIId rlm;
-    static final int SEED = 314159; // first six digits of pi - a beautiful seed!
-    static Random rnd = new Random(SEED);
+
+    static Random rnd = new Random(Settings.SEED);
     static final int NUM_SAMPLES = 10;
 
     public UEFSpecificity(BaseIDFSpecificity qppMethod) {
         this.qppMethod = qppMethod;
     }
 
-    static private int[] getTopDocNames(TopDocs topDocs) {
-        int[] docIds = new int[topDocs.scoreDocs.length];
-        int i=0;
-        for (ScoreDoc sd: topDocs.scoreDocs) {
-            docIds[i++] = sd.doc;
-        }
-        return docIds;
-    }
-
-    // instead of using a rank correlation metric (where we need to supply two lists of float),
-    // we compute the average shift in the ranks of items.
-    // Assumption: |listA \cap listB| = |listA| = |listB|
-    static public double computeRankDist(TopDocs listA, TopDocs listB) {
-        int[] docIdsA = getTopDocNames(listA);
-        int[] docIdsB = getTopDocNames(listB);
-
-        Arrays.sort(docIdsB);
-        int posInA = 0, posInB;
-        double delRank;
-        double avgShift = 0;
-
-        for (int docId: docIdsA) {
-            posInB = Arrays.binarySearch(docIdsB, docId);
-            if (posInB >= 0) {
-                delRank = (posInA - posInB)/(double)docIdsA.length;
-                avgShift += delRank * delRank;
-            }
-            posInA++;
-        }
-
-        avgShift = avgShift/(double)docIdsA.length;
-        avgShift = Math.sqrt(avgShift);
-        return avgShift;
-    }
-
     TopDocs sampleTopDocs(TopDocs topDocs, int M, int k) {
-        ScoreDoc[] sampledScoreDocs = new ScoreDoc[k];
+//        ScoreDoc[] sampledScoreDocs = new ScoreDoc[k];
+        ScoreDoc[] sampledScoreDocs = new ScoreDoc[Math.min(topDocs.scoreDocs.length, k)];
         List<ScoreDoc> sdList = new ArrayList(Arrays.asList(topDocs.scoreDocs));
         Collections.shuffle(sdList, rnd);
         sampledScoreDocs = sdList.subList(0, Math.min(topDocs.scoreDocs.length, k)).toArray(sampledScoreDocs);
+        //+++LUCENE_COMPATIBILITY: Sad there's no #ifdef like C!
+        // 8.x CODE
         return new TopDocs(new TotalHits(k, TotalHits.Relation.EQUAL_TO), sampledScoreDocs);
+        // 5.x code
+        //return new TopDocs(Math.min(topDocs.scoreDocs.length, k), sampledScoreDocs, SEED);
+        //---LUCENE_COMPATIBILITY
     }
 
     @Override
@@ -81,12 +58,16 @@ public class UEFSpecificity implements QPPMethod {
                 rlm.computeFdbkWeights();
             }
             catch (NullPointerException nex) { continue; /* next sample */ }
-            catch (IOException ioex) { ioex.printStackTrace(); }
+            catch (IOException ioex) { ioex.printStackTrace(); } catch (Exception ex) {
+                Logger.getLogger(UEFSpecificity.class.getName()).log(Level.SEVERE, null, ex);
+            }
 
             topDocs_rr = rlm.rerankDocs();
-            double rankDist = computeRankDist(topDocs, topDocs_rr);
+            double rankDist = OverlapStats.computeRankDist(topDocs, topDocs_rr);
             avgRankDist += rankDist;
         }
+
+        double rankSim = OverlapStats.computeRankDist(topDocs, topDocs_rr);
         return ((double)NUM_SAMPLES/avgRankDist) * qppMethod.computeSpecificity(q, retInfo, topDocs, k);
     }
 

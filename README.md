@@ -18,7 +18,7 @@ Currently, the following query performance prediction (QPP) models are implement
 Clone the repository by executing
 
 ```
-git clone https://github.com/gdebasis/qpp-eval.git
+https://github.com/gdebasis/qpp-eval
 ```
 
 For building the project, simply execute
@@ -34,7 +34,7 @@ This tool uses Lucene version 8.8 and hence you need to have an index obtained w
 
 A simple way to obtain a Lucene-based index is to make use of the resource  [luc4ir](https://github.com/gdebasis/luc4ir)  (another repository of mine) and follow the instructions to create a Lucene index.
 
-Or you could simply download this pre-saved TREC disks 4/5 [index](https://gla-my.sharepoint.com/personal/debasis_ganguly_glasgow_ac_uk/_layouts/15/onedrive.aspx?id=/personal/debasis_ganguly_glasgow_ac_uk/Documents/research/common/trec/index&originalPath=aHR0cHM6Ly9nbGEtbXkuc2hhcmVwb2ludC5jb20vOmY6L2cvcGVyc29uYWwvZGViYXNpc19nYW5ndWx5X2dsYXNnb3dfYWNfdWsvRWhiX0xfYV9NSVZFbjJ5QjN4cE5PeXdCTWU0VlZzUEdmODZic1prZ0o5OVZqQT9ydGltZT0tMEFKcGpqXzJFZw) on your local file system and set `index.dir` to that location.
+Or you could simply download this pre-saved TREC disks 4/5 [index](https://drive.google.com/drive/folders/13k0AFcIemmtBvBpaBCyJR7ZYUIoRf2Kx?usp=sharing) on your local file system and set `index.dir` to that location.
 Note that this only works if you want to run your experiments on the TREC Robust collection. For other collections, you have to execute the indexing step first.
 
 The next step would be to configure the query set, e.g. the TREC 8 topic set (query ids: 401 to 450). For this you have to set the `query.file`. The `qrels.file` points to the relevance judgments, which you would need to evaluate the effectiveness of the query performance prediction (QPP).
@@ -64,6 +64,3 @@ A sample output is shown below.
 | Recall_1000 | 0.4232          | 0.4823             | 0.4676        | 0.4280      |
 
 The value in the second row and third column indicates that the rank correlation ([Spearman's rho](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient)) value by considering a reference order of TREC-8 queries sorted by the P@5 values is `0.3310`.
-
-
-

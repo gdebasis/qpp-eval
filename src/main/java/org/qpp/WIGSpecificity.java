@@ -31,6 +31,7 @@ public class WIGSpecificity extends BaseIDFSpecificity {
         for (double rsv: rsvs) {
             wig += (rsv - avgIDF);
         }
+//        return wig/(double)(Math.sqrt(numQueryTerms) * rsvs.length);
         return wig/(double)(numQueryTerms * rsvs.length);
     }
 

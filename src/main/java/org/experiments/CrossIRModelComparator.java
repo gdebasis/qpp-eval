@@ -13,23 +13,24 @@ import java.util.List;
 import java.util.Map;
 
 public class CrossIRModelComparator {
+
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
             args = new String[1];
-            args[0] = "init.properties";
+            args[0] = "qpp.properties";
         }
 
+        Settings.init(args[0]);
         Similarity[] sims = QPPEvaluator.modelsToTest();
 
-        final String queryFile = "data/topics.401-450.xml";
-        final String qrelsFile = "data/qrels.trec8.adhoc";
+        final String queryFile = Settings.getQueryFile();
+        final String qrelsFile = Settings.getQrelsFile();
+        final int nwanted = Settings.getNumWanted();
 
-        SettingsLoader loader = new SettingsLoader(args[0]);
         QPPEvaluator qppEvaluator = new QPPEvaluator(
-                loader.getProp(),
-                loader.getCorrelationMetric(), loader.getSearcher(), loader.getNumWanted());
+                Settings.getProp(),
+                Settings.getCorrelationMetric(), Settings.getSearcher(), nwanted);
         List<TRECQuery> queries = qppEvaluator.constructQueries(queryFile);
-        final int nwanted = loader.getNumWanted();
 
         Map<String, TopDocs> topDocsMap = new HashMap<>();
         Map<String, Evaluator> evaluatorMap = new HashMap<>();
@@ -50,7 +51,7 @@ public class CrossIRModelComparator {
         Map<String, double[]> metricValues = new HashMap<>();
         int i, j, m_i, m_j = 0;
         String key;
-        Metric[] metrics = { Metric.AP, Metric.P_10, Metric.Recall } ;
+        Metric[] metrics = { Metric.AP, Metric.Recall, Metric.nDCG} ;
 
         for (m_i=0; m_i< metrics.length; m_i++) {
             for (Similarity sim : sims) {

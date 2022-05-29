@@ -8,10 +8,10 @@ package org.feedback;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
+import org.trec.FieldConstants;
 import org.trec.TRECQuery;
-
-import java.io.IOException;
 import java.util.*;
+import java.io.IOException;
 
 /**
  *
@@ -27,8 +27,8 @@ class KLDivScoreComparator implements Comparator<ScoreDoc> {
 }
 
 public class RelevanceModelIId {
-    TRECQuery trecQuery;
     TopDocs topDocs;
+    TRECQuery trecQuery;
     float mixingLambda;
     int numTopDocs;
     RetrievedDocsTermStats retrievedDocsTermStats;
@@ -48,13 +48,15 @@ public class RelevanceModelIId {
 
         this.topDocs = topDocs;
         this.numTopDocs = numTopDocs;
+        fbweight = FBWEIGHT;
+        mixingLambda = MIXING_LAMBDA;
     }
     
     public RetrievedDocsTermStats getRetrievedDocsTermStats() {
         return this.retrievedDocsTermStats;
     }
     
-    public void buildTermStats() throws IOException {
+    public void buildTermStats() throws Exception {
         retrievedDocsTermStats = new
                 RetrievedDocsTermStats(reader, topDocs, numTopDocs);
         retrievedDocsTermStats.buildAllStats();
@@ -62,7 +64,7 @@ public class RelevanceModelIId {
     }
     
     float mixTfIdf(RetrievedDocTermInfo w) {
-        return MIXING_LAMBDA *w.getTf()/(float)retrievedDocsTermStats.sumTf +
+        return MIXING_LAMBDA *w.getTf()/(float)retrievedDocsTermStats.sumTf() +
                 (1- MIXING_LAMBDA)*w.getDf()/retrievedDocsTermStats.sumDf;
     }
 
@@ -72,7 +74,7 @@ public class RelevanceModelIId {
                 (1-mixingLambda)*wGlobalInfo.getDf()/retrievedDocsTermStats.sumDf;
     }
 
-    public void computeFdbkWeights() throws IOException {
+    public void computeFdbkWeights() throws Exception {
         float p_q;
         float p_w;
         
@@ -94,7 +96,7 @@ public class RelevanceModelIId {
                     System.err.println("No KDE for query term: " + qTerm.toString());
                     continue;
                 }
-                p_q = qtermInfo.getTf()/(float)retrievedDocsTermStats.sumTf;
+                p_q = qtermInfo.getTf()/(float)retrievedDocsTermStats.sumTf();
                 
                 total_p_q += Math.log(1+p_q);
             }
@@ -139,9 +141,84 @@ public class RelevanceModelIId {
 
         // Sort the scoredocs in ascending order of the KL-Div scores
         Arrays.sort(klDivScoreDocs, new KLDivScoreComparator());
-
+        //+++LUCENE_COMPATIBILITY: Sad there's no #ifdef like C!
+        // 8.x CODE
         TopDocs rerankedDocs = new TopDocs(topDocs.totalHits, klDivScoreDocs);
+        // 5.x CODE
+        //TopDocs rerankedDocs = new TopDocs(topDocs.totalHits, klDivScoreDocs, klDivScoreDocs[0].score);
+        //---LUCENE_COMPATIBILITY
         return rerankedDocs;
     }
 
+    // Implement post-RLM query expansion. Set the term weights
+    // according to the values of f(w).
+    public TRECQuery expandQuery(TRECQuery trecQuery, int numExpansionTerms) throws Exception {
+        final String FIELD_NAME = FieldConstants.FIELD_ANALYZED_CONTENT;
+
+        // The calling sequence has to make sure that the top docs are already
+        // reranked by KL-div
+        // Now reestimate relevance model on the reranked docs this time
+        // for QE.
+        computeFdbkWeights();
+
+        TRECQuery expandedQuery = new TRECQuery(trecQuery);
+        Set<Term> origTerms = new HashSet<>();
+        trecQuery.luceneQuery
+                .createWeight(searcher, ScoreMode.COMPLETE, 1)
+                .extractTerms(origTerms);
+        HashMap<String, String> origQueryWordStrings = new HashMap<>();
+
+        float normalizationFactor = 0;
+
+        List<RetrievedDocTermInfo> termStats = new ArrayList<>();
+        for (Map.Entry<String, RetrievedDocTermInfo> e : retrievedDocsTermStats.termStats.entrySet()) {
+            RetrievedDocTermInfo w = e.getValue();
+            w.setWeight(w.getWeight() *
+                    (float)Math.log(
+                        reader.numDocs()/(float)reader.docFreq(new Term(FIELD_NAME, w.getTerm()))
+                    )
+            );
+            termStats.add(w);
+            normalizationFactor += w.getWeight();
+        }
+
+        // Normalize the weights
+        for (RetrievedDocTermInfo w: retrievedDocsTermStats.termStats.values()) {
+            w.setWeight(w.getWeight()/normalizationFactor);
+        }
+
+        Collections.sort(termStats);
+
+        BooleanQuery.Builder expandedQueryBuilder = new BooleanQuery.Builder();
+        for (Term t : origTerms) {
+            origQueryWordStrings.put(t.text(), t.text());
+            //+++POST_SIGIR review: Assigned weights according to RLM post QE
+            //tq.setBoost(1-fbweight);
+            BoostQuery tq = new BoostQuery(
+                    new TermQuery(t),
+                    (1-fbweight)/(float)origTerms.size());
+            //---POST_SIGIR review
+            expandedQueryBuilder.add(tq, BooleanClause.Occur.SHOULD);
+        }
+
+        int nTermsAdded = 0;
+        for (RetrievedDocTermInfo selTerm : termStats) {
+            String thisTerm = selTerm.getTerm();
+            if (origQueryWordStrings.get(thisTerm) != null)
+                continue;
+
+            BoostQuery tq = new BoostQuery(
+                    new TermQuery(new Term(FIELD_NAME, thisTerm)),
+                    fbweight*selTerm.getWeight()
+            );
+            expandedQueryBuilder.add(tq, BooleanClause.Occur.SHOULD);
+
+            nTermsAdded++;
+            if (nTermsAdded >= numExpansionTerms)
+                break;
+        }
+
+        expandedQuery.luceneQuery = expandedQueryBuilder.build();
+        return expandedQuery;
+    }
 }

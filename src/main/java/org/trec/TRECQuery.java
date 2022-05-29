@@ -8,9 +8,11 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
+
 
 /**
  *
@@ -50,9 +52,16 @@ public class TRECQuery {
 
     public Query getLuceneQueryObj() { return luceneQuery; }
 
+    public void setLuceneQueryObj(Query luceneQuery) { this.luceneQuery = luceneQuery; }
+    
     public Set<Term> getQueryTerms(IndexSearcher searcher) throws IOException {
         Set<Term> terms = new HashSet<>();
+        //+++LUCENE_COMPATIBILITY: Sad there's no #ifdef like C!
+        // 8.x CODE
         luceneQuery.createWeight(searcher, ScoreMode.COMPLETE, 1).extractTerms(terms);
+        // 5.x code
+        //luceneQuery.createWeight(searcher, false).extractTerms(terms);
+        //---LUCENE_COMPATIBILITY
         return terms;
     }
 }

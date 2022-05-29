@@ -27,6 +27,8 @@ public class TRECQueryParser extends DefaultHandler {
     Analyzer            analyzer;
     StandardQueryParser queryParser;
     QPPEvaluator retriever;
+
+    static final String CONTENT_FIELD = "words";
     
     public List<TRECQuery>  queries;
 
@@ -68,11 +70,38 @@ public class TRECQueryParser extends DefaultHandler {
     }
     
     public Query constructLuceneQueryObj(TRECQuery trecQuery) throws QueryNodeException {        
-        String contentFiledName = retriever.getContentFieldName();
-        Query luceneQuery = queryParser.parse(trecQuery.title, contentFiledName);
+        String contentFiledName = retriever==null? CONTENT_FIELD: retriever.getContentFieldName();
+        Query luceneQuery = queryParser.parse(trecQuery.title.replaceAll("/", " ")
+            .replaceAll("\\?", " ").replaceAll("\"", " ").replaceAll("\\&", " "), contentFiledName);
+        trecQuery.luceneQuery = luceneQuery;
         return luceneQuery;
     }
-    
+
+    static public Query constructLuceneQueryObj(TRECQuery trecQuery, String tdn, String contentFieldName) throws QueryNodeException {
+        String content = trecQuery.title;
+
+        if (tdn.equals("t")) {
+            content = trecQuery.title;
+        }
+        else if (tdn.equals("td")) {
+            content = trecQuery.title + " " + trecQuery.desc;
+        }
+        else if (tdn.equals("tdn")) {
+            content = trecQuery.title + " " + trecQuery.desc + " " + trecQuery.narr;
+        }
+
+        Query luceneQuery = new StandardQueryParser(QPPEvaluator.englishAnalyzerWithSmartStopwords())
+                .parse(content
+                    .replaceAll("/", " ")
+                    .replaceAll("\\?", " ")
+                    .replaceAll("\"", " ")
+                    .replaceAll("\\&", " "),
+                contentFieldName
+        );
+        trecQuery.luceneQuery = luceneQuery;
+        return luceneQuery;
+    }
+
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
         try {
