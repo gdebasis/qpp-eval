@@ -94,7 +94,7 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
                 pool.add(irSystem);
             }
         }
-        System.out.println(pool.size());
+        System.out.println("Number of systems: " + pool.size());
         return pool;
     }
 
@@ -122,7 +122,11 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
     }
 
     public static void main(String[] args) {
-        Settings.init("init.properties");
+        if (args.length==0) {
+            args = new String[1];
+            args[0] = "deptheval.properties";
+        }
+        Settings.init(args[0]);
 
         try {
             DepthPoolingWorkflow depthPoolingWorkflow = new DepthPoolingWorkflow(20, 200);

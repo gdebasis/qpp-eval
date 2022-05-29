@@ -74,7 +74,7 @@ class AllRelRcds {
         TopDocs topDocs = system.getTopDocs(qid);
         int depth = system.getDepth(qid);
 
-        for (int i=0; i < depth; i++) {
+        for (int i=0; i < Math.min(depth, topDocs.scoreDocs.length); i++) {
             ScoreDoc sd = topDocs.scoreDocs[i];
             String docId = Settings.getDocIdFromOffset(sd.doc);
             Boolean rel = inducedRel.get(docId);
