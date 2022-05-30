@@ -4,6 +4,7 @@ import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.*;
+import org.evaluator.AllRetrievedResults;
 import org.evaluator.Metric;
 import org.evaluator.RetrievedResults;
 import org.experiments.NQCCalibrationWorkflow;
@@ -41,17 +42,16 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         depthRange = maxDepth-minDepth;
     }
 
-    public double[] computeCorrelations(List<TRECQuery> queries, QPPMethod qppMethod) {
+    public double[] computeCorrelations(List<TRECQuery> queries, IRSystem system, QPPMethod qppMethod) {
         final int qppTopK = Settings.getQppTopK();
         int numQueries = queries.size();
         double[] qppEstimates = new double[numQueries]; // stores qpp estimates for the list of input queries
         int i = 0;
 
         for (TRECQuery query : queries) {
-            RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
-            TopDocs topDocs = topDocsMap.get(query.id);
+            RetrievedResults rr = new RetrievedResults(query.id, system.getTopDocs(query.id));
             qppEstimates[i] = (float)qppMethod.computeSpecificity(
-                    query.getLuceneQueryObj(), rr, topDocs, qppTopK);
+                    query.getLuceneQueryObj(), rr, null, qppTopK);
             i++;
         }
 
@@ -98,27 +98,64 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         return pool;
     }
 
+    List<IRSystem> evaluateRuns(int maxDepth) throws Exception {
+        List<IRSystem> pool = new ArrayList<>();
+        List<String> queryIds = queries.stream().map(x->x.id).collect(Collectors.toList());
+
+        for (String field: QueryFields) {
+            for (Similarity sim : Sims) { // <(t/td/tdn), sim> defines a run
+
+                for (TRECQuery query : this.queries) {
+                    Query luceneQuery = TRECQueryParser.constructLuceneQueryObj(query,
+                            field, FieldConstants.FIELD_ANALYZED_CONTENT);
+                    query.setLuceneQueryObj(luceneQuery);
+                }
+
+                topDocsMap.clear(); // reuse the class variable... avoids creating new objects
+                IRSystem irSystem = new IRSystem(field, sim.toString(), queryIds, maxDepth);
+
+                // batch execute queries
+                qppEvaluator.executeQueries(queries, sim,
+                        Settings.getNumWanted(), Settings.getQrelsFile(),
+                        Settings.RES_FILE + "_" + irSystem.name + ".txt", topDocsMap);
+                irSystem.setTopDocs(topDocsMap);
+
+                pool.add(irSystem);
+            }
+        }
+
+        evaluator = new Evaluator(Settings.getQrelsFile(), pool);
+        for (IRSystem system: pool) {
+            float map = 0;  // map of this run
+            for (TRECQuery query : this.queries) {
+                map += evaluator.compute(query.id, system, Metric.AP); // AP of this query
+            }
+            system.map = map/(float)this.queries.size();
+        }
+        System.out.println("Number of systems: " + pool.size());
+        return pool;
+    }
+
     List<IRSystem> orderByMAP(List<IRSystem> systems) {
         return systems.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
     }
 
-    public Map<String, Integer> computeDepths() {
-        double[] qppEstimates = computeCorrelations(this.queries, this.qppMethod);
+    public void computeDepths(IRSystem system) {
+        double[] qppEstimates = computeCorrelations(this.queries, system, this.qppMethod);
         qppEstimates = Arrays.stream(qppEstimates).map(x->Math.log(1+x)).toArray();
         double maxQPPEstimate = Arrays.stream(qppEstimates).max().getAsDouble();
         qppEstimates = Arrays.stream(qppEstimates).map(x->x/maxQPPEstimate).toArray();
 
         // Calculate depths
-        Map<String, Integer> depths = new HashMap<>();
+        system.depths = new HashMap<>();
         int i = 0;
         // depth of the pool a function of QPP scores
         for (TRECQuery query: queries) {
             int depth = minDepth + (int)(qppEstimates[i]*depthRange);
             //System.out.println(String.format("%s: QPP-score = %.4f, depth = %d", query.id, qppEstimates[i], depth));
-            depths.put(query.id, depth);
+            system.depths.put(query.id, depth);
             i++;
         }
-        return depths;
     }
 
     public double systemRankCorrelation(
@@ -133,7 +170,7 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         // new ordering
         System.out.println("Rank with variable depth");
         List<IRSystem> varDepthEval = orderByMAP(systems);
-        //varDepthEval.stream().forEach(System.out::println);
+        varDepthEval.stream().forEach(System.out::println);
 
         double corr = (new KendallsCorrelation())
                 .correlation(
@@ -146,10 +183,10 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
     void evaluateRunAndPrintStats(List<IRSystem> systems, boolean varDepth) throws Exception {
         Map<String, Integer> depths = new HashMap<>();
         if (varDepth) {
-            depths = computeDepths(); // QPP-based depth computation
             for (IRSystem system : systems) {
-                system.depths = depths; // set the depths to be used later
+                computeDepths(system); // QPP-based depth computation and set the depths to be used later
             }
+            depths = systems.get(0).depths;
         }
         else {
             for (TRECQuery query: queries) {
@@ -181,11 +218,11 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
             DepthPoolingWorkflow depthPoolingWorkflow =
                     new DepthPoolingWorkflow(Settings.minDepth, Settings.maxDepth);
 
-            List<IRSystem> systems = depthPoolingWorkflow.evaluateRuns(); // initial eval with max depth
+            List<IRSystem> systems = depthPoolingWorkflow.evaluateRuns(Settings.maxDepth); // initial eval with max depth
 
             System.out.println("Rank with depth = " + Settings.maxDepth);
             List<IRSystem> maxDepthEval = depthPoolingWorkflow.orderByMAP(systems);
-            //maxDepthEval.stream().forEach(System.out::println); // initial ordering
+            maxDepthEval.stream().forEach(System.out::println); // initial ordering
 
             depthPoolingWorkflow.evaluateRunAndPrintStats(systems, true);
             corr = depthPoolingWorkflow.systemRankCorrelation(maxDepthEval, systems);

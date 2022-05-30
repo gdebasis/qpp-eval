@@ -1,6 +1,9 @@
 package org.evaluator;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.experiments.Settings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +19,17 @@ public class RetrievedResults implements Comparable<RetrievedResults> {
     public RetrievedResults(String qid) {
         this.qid = qid;
         this.rtuples = new ArrayList<>(100);
+        avgP = -1;
+        numRelRet = -1;
+    }
+
+    public RetrievedResults(String qid, TopDocs topDocs) {
+        this.qid = qid;
+        this.rtuples = new ArrayList<>(100);
+        int rank = 1;
+        for (ScoreDoc sd: topDocs.scoreDocs) {
+            addTuple(Settings.getDocIdFromOffset(sd.doc), rank++, sd.score);
+        }
         avgP = -1;
         numRelRet = -1;
     }
