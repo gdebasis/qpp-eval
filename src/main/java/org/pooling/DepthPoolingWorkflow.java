@@ -121,7 +121,56 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         return depths;
     }
 
+    public double systemRankCorrelation(
+            List<IRSystem> maxDepthEval /* ref order with maxdepth*/,
+            List<IRSystem> systems) throws Exception {
+        // evaluator flow that's aware of the depths (present inside the system objects)
+        Evaluator evaluator = new Evaluator(Settings.getQrelsFile(), systems);
+        for (IRSystem system: systems) {
+            // evaluate each system with this depth-aware evaluator
+            system.map = evaluateRun(evaluator, queries, system);
+        }
+        // new ordering
+        System.out.println("Rank with variable depth");
+        List<IRSystem> varDepthEval = orderByMAP(systems);
+        //varDepthEval.stream().forEach(System.out::println);
+
+        double corr = (new KendallsCorrelation())
+                .correlation(
+                        maxDepthEval.stream().mapToDouble(x->x.map).toArray(),
+                        varDepthEval.stream().mapToDouble(x->x.map).toArray()
+                );
+        return corr;
+    }
+
+    void evaluateRunAndPrintStats(List<IRSystem> systems, boolean varDepth) throws Exception {
+        Map<String, Integer> depths = new HashMap<>();
+        if (varDepth) {
+            depths = computeDepths(); // QPP-based depth computation
+            for (IRSystem system : systems) {
+                system.depths = depths; // set the depths to be used later
+            }
+        }
+        else {
+            for (TRECQuery query: queries) {
+                depths.put(query.id, Settings.minDepth);
+            }
+        }
+
+        for (IRSystem system: systems) {
+            // evaluate each system with this depth-aware evaluator
+            system.map = evaluateRun(evaluator, queries, system);
+        }
+
+        System.out.println("Avg. depth = " +
+                depths.values().stream().mapToInt(i->i.intValue()).sum()/depths.size());
+        System.out.println("Median depth = " +
+                depths.values().stream().sorted()
+                        .collect(Collectors.toList()).get(depths.size()/2));
+    }
+
     public static void main(String[] args) {
+        double corr;
         if (args.length==0) {
             args = new String[1];
             args[0] = "deptheval.properties";
@@ -129,36 +178,22 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         Settings.init(args[0]);
 
         try {
-            DepthPoolingWorkflow depthPoolingWorkflow = new DepthPoolingWorkflow(20, 200);
+            DepthPoolingWorkflow depthPoolingWorkflow =
+                    new DepthPoolingWorkflow(Settings.minDepth, Settings.maxDepth);
+
             List<IRSystem> systems = depthPoolingWorkflow.evaluateRuns(); // initial eval with max depth
 
-            System.out.println("Rank with maxdepth");
+            System.out.println("Rank with depth = " + Settings.maxDepth);
             List<IRSystem> maxDepthEval = depthPoolingWorkflow.orderByMAP(systems);
-            maxDepthEval.stream().forEach(System.out::println); // initial ordering
+            //maxDepthEval.stream().forEach(System.out::println); // initial ordering
 
-            Map<String, Integer> depths = depthPoolingWorkflow.computeDepths(); // QPP-based depth computation
-            for (IRSystem system: systems) {
-                system.depths = depths; // set the depths to be used later
-            }
+            depthPoolingWorkflow.evaluateRunAndPrintStats(systems, true);
+            corr = depthPoolingWorkflow.systemRankCorrelation(maxDepthEval, systems);
+            System.out.println(String.format("Kendall's = %.4f", corr));
 
-            // evaluator flow that's aware of the depths (present inside the system objects)
-            Evaluator evaluator = new Evaluator(Settings.getQrelsFile(), systems);
-            for (IRSystem system: systems) {
-                // evaluate each system with this depth-aware evaluator
-                system.map = depthPoolingWorkflow.evaluateRun(evaluator, depthPoolingWorkflow.queries, system);
-            }
-            // new ordering
-            System.out.println("Rank with variable depth");
-            List<IRSystem> varDepthEval = depthPoolingWorkflow.orderByMAP(systems);
-            varDepthEval.stream().forEach(System.out::println);
-
-            double corr = (new KendallsCorrelation())
-                .correlation(
-                    maxDepthEval.stream().mapToDouble(x->x.map).toArray(),
-                    varDepthEval.stream().mapToDouble(x->x.map).toArray()
-            );
-            System.out.println(String.format("Kendall's correlation = %.4f", corr));
-
+            depthPoolingWorkflow.evaluateRunAndPrintStats(systems, false);
+            corr = depthPoolingWorkflow.systemRankCorrelation(maxDepthEval, systems);
+            System.out.println(String.format("Kendall's = %.4f", corr));
         } catch (Exception ex) {
             ex.printStackTrace();
         }

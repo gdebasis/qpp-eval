@@ -35,6 +35,9 @@ public class Settings {
     static Map<String, Similarity> retModelMap = new HashMap<>(3);
     public static String RES_FILE = "/tmp/res";
 
+    public static int minDepth;
+    public static int maxDepth;
+
     static public String getQueryFile() {
         return prop.getProperty("query.file");
     }
@@ -57,6 +60,9 @@ public class Settings {
             reader = DirectoryReader.open(FSDirectory.open(indexDir.toPath()));
             searcher = new IndexSearcher(reader);
             numWanted = Integer.parseInt(prop.getProperty("retrieve.num_wanted", "100"));
+
+            minDepth = Integer.parseInt(prop.getProperty("pool.mindepth", "20"));
+            maxDepth = Integer.parseInt(prop.getProperty("pool.maxdepth", "150"));
 
             corrMetrics = new HashMap<>();
             corrMetrics.put("r", new PearsonCorrelation());
