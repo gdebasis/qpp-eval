@@ -1,5 +1,6 @@
 package org.correlation;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.evaluator.AllRetrievedResults;
@@ -8,6 +9,42 @@ import org.evaluator.RetrievedResults;
 import java.util.*;
 import java.io.*;
 import java.util.stream.Collectors;
+
+class EvalData {
+    String name;
+    String resFile_1;
+    String resFile_0;
+
+    static String queryGroups_1;
+    static String queryGroups_0;
+
+    static final int depth = 10;
+    static final float p = 0.5f;
+
+    static void init(String queryGroups_1, String queryGroups_0) {
+        EvalData.queryGroups_0 = queryGroups_0;
+        EvalData.queryGroups_1 = queryGroups_1;
+    }
+
+    EvalData(String name, String resFile_1, String resFile_0) {
+        this.name = name;
+        this.resFile_0 = resFile_0;
+        this.resFile_1 = resFile_1;
+    }
+
+    void evaluate() throws Exception {
+        double one = OverlapStats.computeOverlapForQueryPairs(
+                resFile_1,
+                queryGroups_1,
+                depth, p, false);
+        double zero = OverlapStats.computeOverlapForQueryPairs(
+                resFile_0,
+                queryGroups_0,
+                depth, p, true);
+
+        System.out.println(String.format("%s\t%.4f\t%.4f\t%.4f", name, one, zero, (one+zero)/2));
+    }
+}
 
 public class OverlapStats {
 
@@ -92,7 +129,7 @@ public class OverlapStats {
         return avgShift;
     }
 
-    static void computeOverlapForQueryPairs(String resFile, String idFile, int depth, float p) throws Exception {
+    static double computeOverlapForQueryPairs(String resFile, String idFile, int depth, float p, boolean one) throws Exception {
         Map<String, Set<String>> equivalenceClass = new HashMap<>();
 
         String line;
@@ -111,20 +148,20 @@ public class OverlapStats {
 
         AllRetrievedResults retrievedResults = new AllRetrievedResults(resFile);
         double rbo = 0, jaccard = 0;
-        int num_pairs = 0;
         for (Set<String> queriesForComparison: equivalenceClass.values()) {
-            int num_queries = queriesForComparison.size();
-            num_pairs += (num_queries*(num_queries-1))>>1;
             String[] queryIds = queriesForComparison.toArray(new String[0]);
-            rbo += rbo_overlap(queryIds, retrievedResults, depth, p);
-            jaccard += jacard_overlap(queryIds, retrievedResults);
+            double del_rbo = rbo_overlap(queryIds, retrievedResults, depth, p);;
+            double del_jaccard = jacard_overlap(queryIds, retrievedResults);
+            rbo += del_rbo;
+            jaccard += del_jaccard;
         }
-        System.out.println("RBO = " + rbo/(double)num_pairs);
-        System.out.println("Jaccard = " + jaccard/(double)num_pairs);
+        return one? rbo/(double)equivalenceClass.size(): 1-rbo/(double)equivalenceClass.size();
+        //System.out.println(String.format("Jaccard = %.4f", jaccard/(double)equivalenceClass.size()));
     }
 
     public static double jacard_overlap(String[] queryIds, AllRetrievedResults retrievedResults) {
         double avg_jaccard = 0;
+        int npairs = 0;
         for (int i=0; i < queryIds.length-1; i++) {
             RetrievedResults this_query_retRcds_a = retrievedResults.getRetrievedResultsForQueryId(queryIds[i]);
 
@@ -142,14 +179,19 @@ public class OverlapStats {
 
                 Set<String> intersection = setA.stream().collect(Collectors.toSet());
                 intersection.retainAll(setB);
-                avg_jaccard += intersection.size()/(setA.size() + setB.size() - intersection.size());
+                double del_jaccard = intersection.size()/(double)(setA.size() + setB.size() - intersection.size());
+                if (del_jaccard>0) {
+                    avg_jaccard += del_jaccard;
+                    npairs++;
+                }
             }
         }
-        return avg_jaccard;
+        return npairs==0? 0: avg_jaccard/(double)npairs;
     }
 
     public static double rbo_overlap(String[] queryIds, AllRetrievedResults retrievedResults, int depth, float p) {
         double avg_rbo = 0;
+        int npairs = 0;
         for (int i=0; i < queryIds.length-1; i++) {
             RetrievedResults this_query_retRcds_a = retrievedResults.getRetrievedResultsForQueryId(queryIds[i]);
 
@@ -165,14 +207,19 @@ public class OverlapStats {
                         .map(x -> x.getDocName())
                         .collect(Collectors.toList());
 
-                avg_rbo += computeRBO(setA, setB, depth, p);
+                double del_rbo = computeRBO(setA, setB, depth, p);
+                if (del_rbo > 0) {
+                    avg_rbo += del_rbo;
+                    npairs++;
+                }
             }
         }
-        return avg_rbo;
+        return npairs==0? 0: avg_rbo/(double)npairs;
     }
 
     public static void main(String[] args) {
 
+        /*
         int[] a = {1, 3, 4, 5, 8, 9};
         int[] b = {2, 3, 5, 6, 8, 10};
         System.out.println(OverlapStats.computeRBO(a, b, a.length, 0.8f));
@@ -184,18 +231,23 @@ public class OverlapStats {
         int[] e = {1, 3, 4, 5, 8, 9};
         int[] f = {3, 8, 12, 14, 18};
         System.out.println(OverlapStats.computeRBO(e, f, e.length, 0.8f));
+        */
+
+        EvalData.init("msmarco_runs/1.txt", "msmarco_runs/0.txt");
+        List<EvalData> evalDataList = new ArrayList<>();
+        evalDataList.add(new EvalData("bm25","msmarco_runs/bm25/bm25_one", "msmarco_runs/bm25/bm25_zero"));
+        evalDataList.add(new EvalData("rlm","msmarco_runs/rlm-bm25/rlm_bm25_one", "msmarco_runs/rlm-bm25/rlm_bm25_zero"));
+        evalDataList.add(new EvalData("kderlm","msmarco_runs/kderlm-bm25/msmarco_kderlm_res_one", "msmarco_runs/kderlm-bm25/msmarco_kderlm_res_zero"));
+        evalDataList.add(new EvalData("drmm","msmarco_runs/drmm-bm25/msmarco_BM25_one.result", "msmarco_runs/drmm-bm25/msmarco_BM25_zero.result"));
+        evalDataList.add(new EvalData("monot5","msmarco_runs/monot5-bm25/query-variant-one-bm25-monot5-0.8-0.5.txt", "msmarco_runs/monot5-bm25/query-variant-zero-bm25-monot5-0.8-0.5.txt"));
+        evalDataList.add(new EvalData("monobert","msmarco_runs/monobert-bm25/query-variant-one-bm25-monobert-0.8-0.5.txt", "msmarco_runs/monobert-bm25/query-variant-zero-bm25-monobert-0.8-0.5.txt"));
+        evalDataList.add(new EvalData("colbert","msmarco_runs/colbert-bm25/colbert-on-bm25-query-variant-one", "msmarco_runs/colbert-bm25/colbert-on-bm25-query-variant-zero"));
 
         try {
-            computeOverlapForQueryPairs(
-                    "msmarco_runs/bm25/bm25_one",
-                    "msmarco_runs/1.txt",
-                    10, 0.5f);
-            computeOverlapForQueryPairs(
-                    "msmarco_runs/bm25/bm25_zero",
-                    "msmarco_runs/0.txt",
-                    10, 0.5f);
+            for (EvalData evalData: evalDataList) {
+                evalData.evaluate();
+            }
         }
         catch (Exception ex) { ex.printStackTrace(); }
-
     }
 }
