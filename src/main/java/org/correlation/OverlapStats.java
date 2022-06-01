@@ -33,23 +33,24 @@ class EvalData {
     }
 
     void evaluate() throws Exception {
-        Pair<Double, Double> rbo_jaccard_one = OverlapStats.computeOverlapForQueryPairs(
-                resFile_1,
+        Pair<Double, Double> diffIN = OverlapStats.computeOverlapForQueryPairs(
+                resFile_1, // resfile_1 contains those queries where we expect a change (or sim-info-need=false)
                 queryGroups_1,
                 depth, p, false);
-        Pair<Double, Double> rbo_jaccard_zero = OverlapStats.computeOverlapForQueryPairs(
+        Pair<Double, Double> simIN = OverlapStats.computeOverlapForQueryPairs(
                 resFile_0,
                 queryGroups_0,
                 depth, p, true);
 
+        // left is Jaccard, right is RBO
         System.out.println(String.format("%s\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f",
                 name,
-                rbo_jaccard_one.getLeft(),
-                rbo_jaccard_zero.getLeft(),
-                (rbo_jaccard_one.getLeft() + rbo_jaccard_zero.getLeft())/2,
-                rbo_jaccard_one.getRight(),
-                rbo_jaccard_zero.getRight(),
-                (rbo_jaccard_one.getRight() + rbo_jaccard_zero.getRight())/2
+                simIN.getLeft(), // Jaccard sim
+                diffIN.getLeft(), // Jaccard diff
+                (diffIN.getLeft() + simIN.getLeft())/2, // avg
+                simIN.getRight(), // RBO sim
+                diffIN.getRight(), // RBO diff
+                (diffIN.getRight() + simIN.getRight())/2
             )
         );
     }
@@ -138,7 +139,8 @@ public class OverlapStats {
         return avgShift;
     }
 
-    static Pair<Double, Double> computeOverlapForQueryPairs(String resFile, String idFile, int depth, float p, boolean one) throws Exception {
+    static Pair<Double, Double> computeOverlapForQueryPairs(
+            String resFile, String idFile, int depth, float p, boolean similarInfoNeed) throws Exception {
         Map<String, Set<String>> equivalenceClass = new HashMap<>();
 
         String line;
@@ -165,7 +167,7 @@ public class OverlapStats {
             jaccard += del_jaccard;
         }
         double z = (double)equivalenceClass.size();
-        return Pair.of(one? jaccard/z: 1-jaccard/z, one? rbo/z: 1-rbo/z);
+        return Pair.of(similarInfoNeed? jaccard/z: 1-jaccard/z, similarInfoNeed? rbo/z: 1-rbo/z);
     }
 
     public static double jacard_overlap(String[] queryIds, AllRetrievedResults retrievedResults) {
