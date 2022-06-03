@@ -4,6 +4,7 @@
  */
 package org.evaluator;
 
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.experiments.Settings;
@@ -118,6 +119,14 @@ class AllRelRcds {
                     }
                     perQueryRelDocs.relMap = newRelMap;
                 }
+
+                System.out.println("#rels: " +
+                perQueryRels
+                    .entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(e->e.getKey(), e->e.getValue().relMap.size()))
+                    .toString()
+                );
             }
         }
         catch (Exception ex) { ex.printStackTrace(); }

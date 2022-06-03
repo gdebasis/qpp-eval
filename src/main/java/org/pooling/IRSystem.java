@@ -12,6 +12,14 @@ public class IRSystem implements Comparable<IRSystem> {
     Map<String, Integer> depths;
     double map;
 
+    IRSystem(IRSystem that) {
+        this.name = that.name;
+        this.tdn = that.tdn;
+        this.sim = that.sim;
+        this.topDocsMap = new HashMap<>(that.topDocsMap);
+        this.depths = new HashMap<>();
+    }
+
     IRSystem(String tdn, String sim, List<String> queryIds, int constantDepth) {
         this.tdn = tdn;
         this.sim = sim;
