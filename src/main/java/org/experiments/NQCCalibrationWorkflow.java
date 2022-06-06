@@ -114,7 +114,7 @@ public class NQCCalibrationWorkflow {
         return topDocsMap;
     }
 
-    private int getDocOffsetFromId(String docId) throws Exception {
+    public int getDocOffsetFromId(String docId) throws Exception {
         Query query = new TermQuery(new Term(FieldConstants.FIELD_ID, docId));
         TopDocs topDocs = qppEvaluator.searcher.search(query, 1);
         return topDocs.scoreDocs[0].doc;

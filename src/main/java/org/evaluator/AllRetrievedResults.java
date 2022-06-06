@@ -2,6 +2,7 @@ package org.evaluator;
 
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.experiments.Settings;
 
 import java.io.*;
@@ -106,6 +107,24 @@ public class AllRetrievedResults {
         buff.append("P@5:\t").append(pAt5/numQueries).append("\n");
 
         return buff.toString();
+    }
+
+    public Map<String, TopDocs> castToTopDocs() {
+        Map<String, TopDocs> topDocsMap = new HashMap<>();
+        for (RetrievedResults rr: allRetMap.values()) {
+            int numret = rr.rtuples.size();
+            List<ScoreDoc> scoreDocs = new ArrayList<>();
+            for (ResultTuple tuple: rr.rtuples) {
+                int docOffset = Settings.getDocOffsetFromId(Settings.getSearcher(), tuple.docName);
+                if (docOffset>0)
+                    scoreDocs.add(new ScoreDoc(docOffset, (float)tuple.score));
+            }
+            ScoreDoc[] scoreDocArray = new ScoreDoc[scoreDocs.size()];
+            scoreDocArray = scoreDocs.toArray(scoreDocArray);
+            TopDocs topDocs = new TopDocs(new TotalHits(numret, TotalHits.Relation.EQUAL_TO), scoreDocArray);
+            topDocsMap.put(rr.qid, topDocs);
+        }
+        return topDocsMap;
     }
 }
 

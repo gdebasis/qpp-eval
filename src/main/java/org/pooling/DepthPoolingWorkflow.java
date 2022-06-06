@@ -16,6 +16,7 @@ import org.trec.TRECQuery;
 import org.trec.TRECQueryParser;
 import org.evaluator.Evaluator;
 
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -136,6 +137,28 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         return pool;
     }
 
+    List<IRSystem> evaluateRuns(String resFileDir, int maxDepth) throws Exception {
+        List<IRSystem> systems = new ArrayList<>();
+        List<String> queryIds = queries.stream().map(x->x.id).collect(Collectors.toList());
+        File[] resFiles = new File(resFileDir).listFiles();
+
+        for (int i=0; i < resFiles.length; i++) {
+            IRSystem irSystem = new IRSystem(resFiles[i], queryIds, maxDepth);
+            systems.add(irSystem);
+        }
+
+        evaluator = new Evaluator(Settings.getQrelsFile(), systems);
+        for (IRSystem system: systems) {
+            float map = 0;  // map of this run
+            for (TRECQuery query : this.queries) {
+                map += evaluator.compute(query.id, system, Metric.AP); // AP of this query
+            }
+            system.map = map/(float)this.queries.size();
+        }
+        System.out.println("Number of systems: " + systems.size());
+        return systems;
+    }
+
     public void computeDepths(IRSystem system) {
         double[] qppEstimates = computeCorrelations(this.queries, system, this.qppMethod);
         qppEstimates = Arrays.stream(qppEstimates).map(x->Math.log(1+x)).toArray();
@@ -147,7 +170,7 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         int i = 0;
         // depth of the pool a function of QPP scores
         for (TRECQuery query: queries) {
-            int depth = minDepth + (int)(qppEstimates[i]*depthRange);
+            int depth = minDepth + (int)((1-qppEstimates[i])*depthRange);
             //System.out.println(String.format("%s: QPP-score = %.4f, depth = %d", query.id, qppEstimates[i], depth));
             system.depths.put(query.id, depth);
             i++;
@@ -221,12 +244,19 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
             args[0] = "deptheval.properties";
         }
         Settings.init(args[0]);
-
+        List<IRSystem> systems_maxDepth = null;
         try {
             DepthPoolingWorkflow depthPoolingWorkflow =
                     new DepthPoolingWorkflow(Settings.minDepth, Settings.maxDepth);
 
-            List<IRSystem> systems_maxDepth = depthPoolingWorkflow.evaluateRuns(Settings.maxDepth); // initial eval with max depth
+            String resFileDir = Settings.getProp().getProperty("resfiledir");
+            if (resFileDir!=null) {
+                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(resFileDir, Settings.maxDepth); // initial eval with max depth
+            }
+            else {
+                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(Settings.maxDepth); // initial eval with max depth
+            }
+
             System.out.println("System MAPs with depth = " + Settings.maxDepth);
             System.out.println(systems_maxDepth.stream().collect(Collectors.toMap(x->x.name, x->x.map)));
 

@@ -8,7 +8,11 @@ import java.util.Map;
 import java.util.Properties;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
 import org.apache.lucene.search.similarities.LMJelinekMercerSimilarity;
@@ -55,7 +59,7 @@ public class Settings {
             prop.load(new FileReader(propFile));
 
             File indexDir = new File(prop.getProperty("index.dir"));
-            System.out.println("Running queries against index: " + indexDir.getPath());
+            System.out.println("Index: " + indexDir.getPath());
 
             reader = DirectoryReader.open(FSDirectory.open(indexDir.toPath()));
             searcher = new IndexSearcher(reader);
@@ -140,4 +144,15 @@ public class Settings {
         catch (Exception ex) { ex.printStackTrace(); }
         return null;
     }
+
+    public static int getDocOffsetFromId(IndexSearcher searcher, String docId) {
+        try {
+            Query query = new TermQuery(new Term(FieldConstants.FIELD_ID, docId));
+            TopDocs topDocs = searcher.search(query, 1);
+            return topDocs.scoreDocs[0].doc;
+        }
+        catch (Exception ex) { ex.printStackTrace(); }
+        return -1;
+    }
+
 }

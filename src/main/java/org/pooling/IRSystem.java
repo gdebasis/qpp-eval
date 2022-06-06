@@ -1,7 +1,10 @@
 package org.pooling;
 
 import org.apache.lucene.search.TopDocs;
+import org.evaluator.AllRetrievedResults;
+
 import java.util.*;
+import java.io.*;
 import java.util.stream.Collectors;
 
 public class IRSystem implements Comparable<IRSystem> {
@@ -25,6 +28,13 @@ public class IRSystem implements Comparable<IRSystem> {
         this.sim = sim;
         name = tdn + ":" + sim.toString();
         topDocsMap = null;
+        depths = queryIds.stream().collect(Collectors.toMap(x->x, x->constantDepth));
+    }
+
+    IRSystem(File resFile, List<String> queryIds, int constantDepth) {
+        this.name = resFile.getName();
+        AllRetrievedResults allRetrievedResults = new AllRetrievedResults(resFile.getPath());
+        topDocsMap = allRetrievedResults.castToTopDocs();
         depths = queryIds.stream().collect(Collectors.toMap(x->x, x->constantDepth));
     }
 

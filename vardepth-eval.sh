@@ -8,10 +8,9 @@ qrels.file=data/qrels.trec8.adhoc
 query.file=data/topics.401-450.xml
 retrieve.num_wanted=1000
 qpp.numtopdocs=1000
+resfiledir=trec/trec8
 qsim.numintervals=5
-#methods {avgidf, nqc, wig, clarity, uef_nqc, uef_wig, uef_clarity}
 qpp.method=avgidf
-#metrics = {rho, tau, qsim, qsim_strict, pairacc}
 qpp.metric=tau
 EOF1
 
