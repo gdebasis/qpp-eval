@@ -162,15 +162,17 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
     public void computeDepths(IRSystem system) {
         double[] qppEstimates = computeCorrelations(this.queries, system, this.qppMethod);
         qppEstimates = Arrays.stream(qppEstimates).map(x->Math.log(1+x)).toArray();
-        double maxQPPEstimate = Arrays.stream(qppEstimates).max().getAsDouble();
-        qppEstimates = Arrays.stream(qppEstimates).map(x->x/maxQPPEstimate).toArray();
+        double min = Arrays.stream(qppEstimates).min().getAsDouble();
+        double max = Arrays.stream(qppEstimates).max().getAsDouble();
+        qppEstimates = Arrays.stream(qppEstimates).map(x -> 1 - ((x-min)/(max-min))).toArray();
 
         // Calculate depths
         system.depths = new HashMap<>();
         int i = 0;
         // depth of the pool a function of QPP scores
         for (TRECQuery query: queries) {
-            int depth = minDepth + (int)((1-qppEstimates[i])*depthRange);
+            //int depth = minDepth + (int)((1-qppEstimates[i])*depthRange);
+            int depth = minDepth + (int)((qppEstimates[i])*depthRange);
             //System.out.println(String.format("%s: QPP-score = %.4f, depth = %d", query.id, qppEstimates[i], depth));
             system.depths.put(query.id, depth);
             i++;
@@ -221,19 +223,12 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
             system.map = evaluateRun(evaluator, queries, system);
         }
 
-        List<Integer> depths = reevaluated_systems.stream()
-                .flatMap(
-                    x->x.depths.values()
-                            .stream()
-                            .map(y->y.intValue())
-                )
-                .sorted()
-                .collect(Collectors.toList()
-        );
+        List<Integer> depths = reevaluated_systems.get(0).depths.values().stream().collect(Collectors.toList());
+        System.out.println("Depths per query: " + depths);
         System.out.println(String.format("Avg. depth: %.4f",
                 depths.stream().mapToInt(x->x.intValue()).sum()/(double)depths.size()));
         System.out.println(String.format("Median depth: %d",
-                depths.stream().collect(Collectors.toList()).get(depths.size()/2)));
+                depths.stream().sorted().collect(Collectors.toList()).get(depths.size()/2)));
 
         return reevaluated_systems;
     }
@@ -273,7 +268,12 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
                 )
             );
 
-            List<IRSystem> systems_minDepth = depthPoolingWorkflow.evaluateRunAndPrintStats(systems_maxDepth, Settings.minDepth);
+            int avgDepth = (int)(systems_varDepth.get(0).depths.values()
+                    .stream()
+                    .mapToInt(x->x.intValue())
+                    .sum()/(double)systems_varDepth.get(0).depths.size()
+            );
+            List<IRSystem> systems_minDepth = depthPoolingWorkflow.evaluateRunAndPrintStats(systems_maxDepth, avgDepth);
             System.out.println(String.format("Kendall's = %.4f",
                 (new KendallsCorrelation()) // no sorting!
                     .correlation(
