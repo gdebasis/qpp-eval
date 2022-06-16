@@ -213,6 +213,23 @@ public class Evaluator {
         buff.append(retRcds.toString());
         return buff.toString();
     }
+
+    public float relRatioOfPools(Evaluator ref) {
+        int thisNumRels = relRcds.perQueryRels
+                .entrySet()
+                .stream()
+                .map(x->x.getValue().relMap.size())
+                .mapToInt(x-> x.intValue())
+                .sum();
+
+        int refNumRels = ref.relRcds.perQueryRels
+                .entrySet()
+                .stream()
+                .map(x->x.getValue().relMap.size())
+                .mapToInt(x-> x.intValue())
+                .sum();
+        return thisNumRels/(float)refNumRels;
+    }
     
     public static void main(String[] args) {
         if (args.length < 1) {

@@ -12,6 +12,9 @@ resfiledir=trec/trec8
 qsim.numintervals=5
 qpp.method=avgidf
 qpp.metric=tau
+pool.mindepth=20
+pool.maxdepth=50
+random_depth=true
 EOF1
 
 mvn exec:java@deptheval -Dexec.args="deptheval.properties"
