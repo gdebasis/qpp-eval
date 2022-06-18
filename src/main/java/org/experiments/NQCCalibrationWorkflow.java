@@ -52,7 +52,7 @@ public class NQCCalibrationWorkflow {
         qppEvaluator = new QPPEvaluator(
                 Settings.getProp(),
                 Settings.getCorrelationMetric(), Settings.getSearcher(), Settings.getNumWanted());
-        queries = qppEvaluator.constructQueries(Settings.getQueryFile());
+        queries = qppEvaluator.constructQueries(Settings.getQueryFile(), Settings.tsvMode);
         evaluator = qppEvaluator.executeQueries(queries, sim, Settings.getNumWanted(),
                 Settings.getQrelsFile(), Settings.RES_FILE, topDocsMap);
     }

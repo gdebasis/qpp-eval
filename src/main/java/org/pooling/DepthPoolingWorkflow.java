@@ -65,13 +65,15 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         List<String> queryIds = queries.stream().map(x->x.id).collect(Collectors.toList());
 
         for (String field: QueryFields) {
-            for (Similarity sim : Sims) { // <(t/td/tdn), sim> defines a run
-
+            if (!Settings.tsvMode) {
                 for (TRECQuery query : this.queries) {
                     Query luceneQuery = TRECQueryParser.constructLuceneQueryObj(query,
                             field, FieldConstants.FIELD_ANALYZED_CONTENT);
                     query.setLuceneQueryObj(luceneQuery);
                 }
+            }
+
+            for (Similarity sim : Sims) { // <(t/td/tdn), sim> defines a run
 
                 topDocsMap.clear(); // reuse the class variable... avoids creating new objects
                 IRSystem irSystem = new IRSystem(field, sim.toString(), queryIds, maxDepth);
@@ -143,11 +145,12 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
 
         int i = 0;
         system.depths = new HashMap<>();
+        boolean proportional = Boolean.parseBoolean(Settings.getProp().getProperty("qpp.direct", "false"));
         // depth of the pool a function of QPP scores
         for (TRECQuery query: queries) {
-            int depth = Settings.minDepth + (int)((1-qppEstimates[i])*depthRange);
-            //int depth = Settings.minDepth + (int)((qppEstimates[i])*depthRange);
-            //System.out.println(String.format("%s: QPP-score = %.4f, depth = %d", query.id, qppEstimates[i], depth));
+            int depth = proportional?
+                    Settings.minDepth + (int)((qppEstimates[i])*depthRange):
+                    Settings.minDepth + (int)((1-qppEstimates[i])*depthRange);
             system.depths.put(query.id, depth);
             i++;
         }
@@ -209,10 +212,15 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
     public static void main(String[] args) {
         if (args.length==0) {
             args = new String[1];
-            args[0] = "deptheval.properties";
+            args[0] = "deptheval.msmarco.properties";
         }
         Settings.init(args[0]);
         List<IRSystem> systems_maxDepth = null;
+        if (Settings.tsvMode) {
+            QueryFields = new String[1];
+            QueryFields[0] = "t";
+        }
+
         try {
             DepthPoolingWorkflow depthPoolingWorkflow =
                     new DepthPoolingWorkflow(Settings.minDepth, Settings.maxDepth);

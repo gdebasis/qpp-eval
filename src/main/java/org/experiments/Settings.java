@@ -2,9 +2,14 @@ package org.experiments;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
@@ -42,6 +47,7 @@ public class Settings {
     public static int minDepth;
     public static int maxDepth;
     public static boolean randomDepths;
+    public static boolean tsvMode;
 
     static public String getQueryFile() {
         return prop.getProperty("query.file");
@@ -69,6 +75,7 @@ public class Settings {
             minDepth = Integer.parseInt(prop.getProperty("pool.mindepth", "20"));
             maxDepth = Integer.parseInt(prop.getProperty("pool.maxdepth", "50"));
             randomDepths = Boolean.parseBoolean(prop.getProperty("random_depth", "false"));
+            tsvMode = prop.getProperty("query.readmode", "xml").equals("tsv");
 
             corrMetrics = new HashMap<>();
             corrMetrics.put("r", new PearsonCorrelation());
@@ -157,4 +164,28 @@ public class Settings {
         return -1;
     }
 
+    public static String analyze(Analyzer analyzer, String query) {
+
+        StringBuffer buff = new StringBuffer();
+        try {
+            TokenStream stream = analyzer.tokenStream("dummy", new StringReader(query));
+            CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
+            stream.reset();
+            while (stream.incrementToken()) {
+                String term = termAtt.toString();
+                buff.append(term).append(" ");
+            }
+            stream.end();
+            stream.close();
+
+            if (buff.length()>0)
+                buff.deleteCharAt(buff.length()-1);
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+
+        return buff.toString();
+    }
 }

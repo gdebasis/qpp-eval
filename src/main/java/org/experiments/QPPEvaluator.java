@@ -1,8 +1,11 @@
 package org.experiments;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.apache.lucene.analysis.Analyzer;
@@ -99,6 +102,32 @@ public class QPPEvaluator {
         trecQueryParser = new TRECQueryParser(this, queryFile, englishAnalyzerWithSmartStopwords());
         trecQueryParser.parse();
         return trecQueryParser.getQueries();
+    }
+
+    public List<TRECQuery> constructQueries(String queryFile, boolean tsv) throws Exception {
+        if (!tsv)
+            return constructQueries(queryFile);
+
+        // id \tab query-text
+        Map<String, String> id2QueryMap = FileUtils.readLines(new File(queryFile), StandardCharsets.UTF_8)
+                .stream()
+                .map(x -> x.split("\t"))
+                .collect(Collectors.toMap(x -> x[0], x -> x[1])
+                )
+        ;
+        return id2QueryMap.entrySet().stream()
+                .map(e -> new TRECQuery(e.getKey(), makeQuery(e.getValue())))
+                .collect(Collectors.toList());
+    }
+
+    public Query makeQuery(String queryText) {
+        BooleanQuery.Builder qb = new BooleanQuery.Builder();
+        String[] tokens = Settings.analyze(englishAnalyzerWithSmartStopwords(), queryText).split("\\s+");
+        for (String token: tokens) {
+            TermQuery tq = new TermQuery(new Term(getContentFieldName(), token));
+            qb.add(new BooleanClause(tq, BooleanClause.Occur.SHOULD));
+        }
+        return (Query)qb.build();
     }
 
     public TopDocs retrieve(TRECQuery query, Similarity sim, int numWanted) throws IOException {

@@ -120,6 +120,7 @@ class AllRelRcds {
                     perQueryRelDocs.relMap = newRelMap;
                 }
 
+                /*
                 System.out.println("#rels: " +
                 perQueryRels
                     .entrySet()
@@ -127,6 +128,7 @@ class AllRelRcds {
                     .collect(Collectors.toMap(e->e.getKey(), e->e.getValue().relMap.size()))
                     .toString()
                 );
+                 */
             }
         }
         catch (Exception ex) { ex.printStackTrace(); }
