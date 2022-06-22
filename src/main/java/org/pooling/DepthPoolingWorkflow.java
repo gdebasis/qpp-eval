@@ -1,5 +1,6 @@
 package org.pooling;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.similarities.*;
@@ -16,6 +17,7 @@ import org.trec.TRECQueryParser;
 import org.evaluator.Evaluator;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -123,7 +125,7 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
     }
 
     // Calculate depths
-    public void computeDepths(IRSystem system) {
+    public void computeDepths(IRSystem system) throws Exception {
         if (Settings.randomDepths) { // random depths
             system.depths =
                 queries
@@ -137,8 +139,25 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
             return;
         }
 
-        double[] qppEstimates = computeCorrelations(this.queries, system, this.qppMethod);
-        qppEstimates = Arrays.stream(qppEstimates).map(x->Math.log(1+x)).toArray();
+        double[] qppEstimates;
+        if (Settings.getQppScoresFile().length()>0) {
+            // there's a QPP scores file we should read from... so, what're u waiting for?
+            // the order in which the QPP scores are stored MUST be identical to the order
+            // in which the queries appear in the queries file!
+            List<String> qppScores = FileUtils.readLines(
+                    new File(Settings.getQppScoresFile()), StandardCharsets.UTF_8);
+            qppEstimates = qppScores.stream()
+                            .map(x->Double.parseDouble(x))
+                            .mapToDouble(x->x.doubleValue())
+                            .toArray();
+        }
+        else {
+            qppEstimates = computeCorrelations(this.queries, system, this.qppMethod);
+        }
+
+        if (Settings.applyLogTransform())
+            qppEstimates = Arrays.stream(qppEstimates).map(x->Math.log(1+x)).toArray();
+
         double min = Arrays.stream(qppEstimates).min().getAsDouble();
         double max = Arrays.stream(qppEstimates).max().getAsDouble();
         qppEstimates = Arrays.stream(qppEstimates).map(x -> 1 - ((x-min)/(max-min))).toArray();
@@ -230,7 +249,7 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
                 systems_maxDepth = depthPoolingWorkflow.evaluateRuns(resFileDir, Settings.EVAL_POOL_DEPTH); // initial eval with max depth
             }
             else {
-                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(Settings.maxDepth); // initial eval with max depth
+                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(Settings.EVAL_POOL_DEPTH); // initial eval with max depth
             }
 
             System.out.println("System MAPs with depth = " + Settings.EVAL_POOL_DEPTH);

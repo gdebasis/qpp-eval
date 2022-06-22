@@ -44,10 +44,12 @@ public class Settings {
     public static String RES_FILE = "/tmp/res";
     public static int EVAL_POOL_DEPTH = 100;
 
+    public static String qppScoresFile;
     public static int minDepth;
     public static int maxDepth;
     public static boolean randomDepths;
     public static boolean tsvMode;
+    public static boolean logTransform;
 
     static public String getQueryFile() {
         return prop.getProperty("query.file");
@@ -55,6 +57,14 @@ public class Settings {
 
     static public String getQrelsFile() {
         return prop.getProperty("qrels.file");
+    }
+
+    static public String getQppScoresFile() {
+        return prop.getProperty("qpp.scores.file", "");
+    }
+
+    static public boolean applyLogTransform() {
+        return Boolean.parseBoolean(prop.getProperty("qpp.logtramsform", "true"));
     }
 
     static public void init(String propFile) {
