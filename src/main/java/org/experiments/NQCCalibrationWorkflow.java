@@ -97,7 +97,7 @@ public class NQCCalibrationWorkflow {
                     rr = new RetrievedResults(qid);
                 }
 
-                int offset = getDocOffsetFromId(tokens[2]);
+                int offset = Settings.getDocOffsetFromId(tokens[2]);
                 int rank = Integer.parseInt(tokens[3]);
                 double score = Float.parseFloat(tokens[4]);
 
@@ -112,12 +112,6 @@ public class NQCCalibrationWorkflow {
         }
 
         return topDocsMap;
-    }
-
-    public int getDocOffsetFromId(String docId) throws Exception {
-        Query query = new TermQuery(new Term(FieldConstants.FIELD_ID, docId));
-        TopDocs topDocs = qppEvaluator.searcher.search(query, 1);
-        return topDocs.scoreDocs[0].doc;
     }
 
     private TopDocs convert(RetrievedResults rr) {

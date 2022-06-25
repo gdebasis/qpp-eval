@@ -97,6 +97,7 @@ class AllRelRcds {
             br.close();
             fr.close();
 
+            // TODO: We need to make this a faster operation
             // filter out the relevant documents that appear beyond the depth cut-off
             if (systems != null) {
                 // init every rel doc to true

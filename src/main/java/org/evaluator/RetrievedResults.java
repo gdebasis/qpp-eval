@@ -28,7 +28,7 @@ public class RetrievedResults implements Comparable<RetrievedResults> {
         this.rtuples = new ArrayList<>(100);
         int rank = 1;
         for (ScoreDoc sd: topDocs.scoreDocs) {
-            addTuple(Settings.getDocIdFromOffset(sd.doc), rank++, sd.score);
+            addTuple(Settings.getDocIdFromOffset_Mem(sd.doc), rank++, sd.score);
         }
         avgP = -1;
         numRelRet = -1;

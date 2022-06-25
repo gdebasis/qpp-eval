@@ -9,6 +9,8 @@ package org.trec;
  * @author Debasis
  */
 import java.io.FileReader;
+
+import org.experiments.Settings;
 import org.xml.sax.*;
 import org.xml.sax.helpers.*;
 import javax.xml.parsers.*;
@@ -70,7 +72,7 @@ public class TRECQueryParser extends DefaultHandler {
     }
     
     public Query constructLuceneQueryObj(TRECQuery trecQuery) throws QueryNodeException {        
-        String contentFiledName = retriever==null? CONTENT_FIELD: retriever.getContentFieldName();
+        String contentFiledName = retriever==null? CONTENT_FIELD: Settings.getContentFieldName();
         Query luceneQuery = queryParser.parse(trecQuery.title.replaceAll("/", " ")
             .replaceAll("\\?", " ").replaceAll("\"", " ").replaceAll("\\&", " "), contentFiledName);
         trecQuery.luceneQuery = luceneQuery;

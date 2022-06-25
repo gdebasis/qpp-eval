@@ -62,14 +62,6 @@ public class QPPEvaluator {
         this.correlationMetric = correlationMetric;
     }
 
-    public String getContentFieldName() {
-        return prop.getProperty("content.field", "words");
-    }
-
-    public String getIdFieldName() {
-        return prop.getProperty("id.field", "id");
-    }
-
     private static List<String> buildStopwordList() {
         List<String> stopwords = new ArrayList<>();
         String line;
@@ -124,7 +116,7 @@ public class QPPEvaluator {
         BooleanQuery.Builder qb = new BooleanQuery.Builder();
         String[] tokens = Settings.analyze(englishAnalyzerWithSmartStopwords(), queryText).split("\\s+");
         for (String token: tokens) {
-            TermQuery tq = new TermQuery(new Term(getContentFieldName(), token));
+            TermQuery tq = new TermQuery(new Term(Settings.getContentFieldName(), token));
             qb.add(new BooleanClause(tq, BooleanClause.Occur.SHOULD));
         }
         return (Query)qb.build();
@@ -826,7 +818,7 @@ public class QPPEvaluator {
             int docId = hits[i].doc;
             Document d = searcher.doc(docId);
             buff.append(query.id.trim()).append("\tQ0\t").
-                    append(d.get(getIdFieldName())).append("\t").
+                    append(d.get(Settings.getIdFieldName())).append("\t").
                     append((i+1)).append("\t").
                     append(hits[i].score).append("\t").
                     append(runName).append("\n");

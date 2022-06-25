@@ -34,7 +34,7 @@ public class AllRetrievedResults {
         RetrievedResults rr = new RetrievedResults(qid);
         int rank = 1;
         for (ScoreDoc sd: topDocs.scoreDocs) {
-            rr.addTuple(Settings.getDocIdFromOffset(sd.doc), rank++, sd.score);
+            rr.addTuple(Settings.getDocIdFromOffset_Mem(sd.doc), rank++, sd.score);
         }
         allRetMap.put(qid, rr);
     }
@@ -115,7 +115,7 @@ public class AllRetrievedResults {
             int numret = rr.rtuples.size();
             List<ScoreDoc> scoreDocs = new ArrayList<>();
             for (ResultTuple tuple: rr.rtuples) {
-                int docOffset = Settings.getDocOffsetFromId(Settings.getSearcher(), tuple.docName);
+                int docOffset = Settings.getDocOffsetFromId_Mem(tuple.docName);
                 if (docOffset>0)
                     scoreDocs.add(new ScoreDoc(docOffset, (float)tuple.score));
             }

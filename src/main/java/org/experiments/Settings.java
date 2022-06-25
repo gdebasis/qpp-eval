@@ -1,15 +1,14 @@
 package org.experiments;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.StringReader;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.util.*;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
@@ -49,7 +48,8 @@ public class Settings {
     public static int maxDepth;
     public static boolean randomDepths;
     public static boolean tsvMode;
-    public static boolean logTransform;
+    public static HashMap<String, Integer> docId2OffsetMap = new HashMap<>();
+    public static HashMap<Integer, String> offset2DocIdMap = new HashMap<>();
 
     static public String getQueryFile() {
         return prop.getProperty("query.file");
@@ -67,6 +67,27 @@ public class Settings {
         return Boolean.parseBoolean(prop.getProperty("qpp.logtramsform", "true"));
     }
 
+    static void constructDocId2OffsetMap() {
+        try {
+            // we just need the mapping for the rel docs... just get all docs that are relevant for some query
+            // we don't even need to keep track of the queries
+            List<String> relRcdLines = FileUtils.readLines(new File(getQrelsFile()), Charset.defaultCharset());
+            for (String relRcdLine: relRcdLines) {
+                String[] tokens = relRcdLine.split("\\s+");
+                String docId = tokens[2];
+                int rel = Integer.parseInt(tokens[3]);
+                if (rel>0) {
+                    int offset = getDocOffsetFromId(docId);
+                    offset2DocIdMap.put(offset, docId);
+                    docId2OffsetMap.put(docId, offset);
+                    System.out.print(String.format("Added (%d, %s) pair...\r", offset, docId));
+                }
+            }
+            System.out.println();
+        }
+        catch (Exception ex) { ex.printStackTrace(); }
+    }
+
     static public void init(String propFile) {
         if (initialized)
             return;
@@ -81,6 +102,10 @@ public class Settings {
             reader = DirectoryReader.open(FSDirectory.open(indexDir.toPath()));
             searcher = new IndexSearcher(reader);
             numWanted = Integer.parseInt(prop.getProperty("retrieve.num_wanted", "100"));
+
+            System.out.println("Loading the map of Doc-Id strings and Lucene integer offsets in memory...");
+            constructDocId2OffsetMap();
+            System.out.println("Loaded the map of Doc-Id strings and Lucene integer offsets in memory...");
 
             minDepth = Integer.parseInt(prop.getProperty("pool.mindepth", "20"));
             maxDepth = Integer.parseInt(prop.getProperty("pool.maxdepth", "50"));
@@ -126,6 +151,15 @@ public class Settings {
         }
     }
 
+    public static String getContentFieldName() {
+        return prop.getProperty("content.field", FieldConstants.FIELD_ANALYZED_CONTENT);
+    }
+
+    public static String getIdFieldName() {
+        return prop.getProperty("id.field", FieldConstants.FIELD_ID);
+    }
+
+
     static public Similarity getRetModel() {
         return retModelMap.get(prop.getProperty("ret.model"));
     }
@@ -164,7 +198,11 @@ public class Settings {
         return null;
     }
 
-    public static int getDocOffsetFromId(IndexSearcher searcher, String docId) {
+    public static String getDocIdFromOffset_Mem(int docOffset) {
+        return offset2DocIdMap.get(docOffset);
+    }
+
+    public static int getDocOffsetFromId(String docId) {
         try {
             Query query = new TermQuery(new Term(FieldConstants.FIELD_ID, docId));
             TopDocs topDocs = searcher.search(query, 1);
@@ -174,8 +212,12 @@ public class Settings {
         return -1;
     }
 
-    public static String analyze(Analyzer analyzer, String query) {
+    public static int getDocOffsetFromId_Mem(String docId) {
+        Integer offset = docId2OffsetMap.get(docId);
+        return offset==null? -1 : offset;
+    }
 
+    public static String analyze(Analyzer analyzer, String query) {
         StringBuffer buff = new StringBuffer();
         try {
             TokenStream stream = analyzer.tokenStream("dummy", new StringReader(query));
