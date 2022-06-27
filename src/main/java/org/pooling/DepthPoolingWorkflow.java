@@ -247,13 +247,13 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
 
             String resFileDir = Settings.getProp().getProperty("resfiledir");
             if (resFileDir!=null) {
-                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(resFileDir, Settings.EVAL_POOL_DEPTH); // initial eval with max depth
+                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(resFileDir, Settings.maxDepth); // initial eval with max depth
             }
             else {
-                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(Settings.EVAL_POOL_DEPTH); // initial eval with max depth
+                systems_maxDepth = depthPoolingWorkflow.evaluateRuns(Settings.maxDepth); // initial eval with max depth
             }
 
-            System.out.println("System MAPs with depth = " + Settings.EVAL_POOL_DEPTH);
+            System.out.println("System MAPs with depth = " + Settings.maxDepth);
             System.out.println(systems_maxDepth.stream().collect(Collectors.toMap(x->x.name, x->x.map)));
 
             List<IRSystem> systems_varDepth = depthPoolingWorkflow.evaluateRunAndPrintStats(systems_maxDepth, 0);
@@ -262,11 +262,14 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
 
             depthPoolingWorkflow.printPoolStats(systems_maxDepth, systems_varDepth);
 
+            /*
             int avgDepth = (int)(systems_varDepth.get(0).depths.values()
                     .stream()
                     .mapToInt(x->x.intValue())
                     .sum()/(double)systems_varDepth.get(0).depths.size()
             );
+             */
+            int avgDepth = Settings.minDepth + (int)(0.5f*(Settings.maxDepth - Settings.minDepth));
             List<IRSystem> systems_minDepth = depthPoolingWorkflow.evaluateRunAndPrintStats(systems_maxDepth, avgDepth);
             depthPoolingWorkflow.printPoolStats(systems_maxDepth, systems_minDepth);
 
