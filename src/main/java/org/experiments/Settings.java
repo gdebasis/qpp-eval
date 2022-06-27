@@ -80,7 +80,7 @@ public class Settings {
                     int offset = getDocOffsetFromId(docId);
                     offset2DocIdMap.put(offset, docId);
                     docId2OffsetMap.put(docId, offset);
-                    System.out.print(String.format("Added (%d, %s) pair...\r", offset, docId));
+                    //System.out.print(String.format("Added (%d, %s) pair...\r", offset, docId));
                 }
             }
             System.out.println();

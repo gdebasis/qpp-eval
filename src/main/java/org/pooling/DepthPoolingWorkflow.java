@@ -225,7 +225,8 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
         System.out.println(String.format("Pearson's = %.4f", (new PearsonCorrelation()).correlation(refMaps, approxMaps)));
         System.out.println(String.format("Kendall's = %.4f", (new KendallsCorrelation()).correlation(refMaps, approxMaps)));
         System.out.println(String.format("RMSE = %.4f", rmse(refMaps, approxMaps)));
-        System.out.println(String.format("Coverage = %.4f", depthBasedEvaluator.relRatioOfPools(refEvaluator)));
+        double recall = depthBasedEvaluator.avgRecallAtVariableDepths();
+        System.out.println(String.format("Avg.Recall@Depths = %.4f", recall));
     }
 
     public static void main(String[] args) {

@@ -215,7 +215,24 @@ public class Evaluator {
         return buff.toString();
     }
 
-    public float relRatioOfPools(Evaluator ref) {
+    public float avgRecallAtVariableDepths() {
+        double[] thisNumRels = relRcds.perQueryRels
+                .entrySet()
+                .stream()
+                .map(x->(double)x.getValue().relMap.size())
+                .mapToDouble(x->x.doubleValue())
+                .toArray()
+        ;
+        double[] depths = this.relRcds.systems.get(0).getDepths().stream().mapToDouble(x->x.doubleValue()).toArray();
+        double sum = 0, z = 0;
+        for (int i=0; i<thisNumRels.length; i++) {
+            sum += 1/depths[i] * thisNumRels[i];
+            z += 1/depths[i];
+        }
+        return (float)(sum/z); // weighted average
+    }
+
+    public float precisionAtDepths(Evaluator ref) {
         int thisNumRels = relRcds.perQueryRels
                 .entrySet()
                 .stream()
@@ -231,7 +248,7 @@ public class Evaluator {
                 .sum();
         return thisNumRels/(float)refNumRels;
     }
-    
+
     public static void main(String[] args) {
         if (args.length < 1) {
             args = new String[1];

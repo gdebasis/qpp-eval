@@ -47,6 +47,8 @@ public class IRSystem implements Comparable<IRSystem> {
         this.topDocsMap = new HashMap<>(topDocsMap);
     }
 
+    public List<Integer> getDepths() { return this.depths.values().stream().collect(Collectors.toList()); }
+
     @Override
     public int compareTo(IRSystem that) {
         return Double.compare(this.map, that.map);
