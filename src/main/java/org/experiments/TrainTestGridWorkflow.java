@@ -44,7 +44,8 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
 
     public static void main(String[] args) {
         final String queryFile = "data/trecdl1920.queries";
-        final String resFile = "msmarco_runs/colbert.reranked.res.trec";
+        //final String resFile = "msmarco_runs/colbert.reranked.res.trec";
+        final String resFile = "msmarco_runs/trecdl.monot5.rr.pos-scores.res";
         Settings.init("msmarco.properties");
 
         try {

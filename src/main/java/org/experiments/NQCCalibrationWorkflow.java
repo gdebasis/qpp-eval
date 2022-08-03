@@ -91,7 +91,6 @@ public class NQCCalibrationWorkflow {
         catch (Exception ex) {
             ex.printStackTrace();
         }
-
         return topDocsMap;
     }
 
