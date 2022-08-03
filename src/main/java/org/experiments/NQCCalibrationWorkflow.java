@@ -52,7 +52,7 @@ public class NQCCalibrationWorkflow {
                 Settings.getCorrelationMetric(), Settings.getSearcher(), Settings.getNumWanted());
         queries = qppEvaluator.constructQueries(queryFile, Settings.tsvMode);
         topDocsMap = loadResFile(new File(resFile));
-        System.out.println("#### : " + topDocsMap.size());
+        //System.out.println("#### : " + topDocsMap.size());
         evaluator = qppEvaluator.executeDummy(queries, sim,
                 Settings.getNumWanted(), Settings.getQrelsFile(),
                 Settings.RES_FILE, topDocsMap);
@@ -172,7 +172,7 @@ public class NQCCalibrationWorkflow {
     }
 
     public void averageAcrossEpochs() {
-        final int NUM_EPOCHS = 2; // change it to 30!
+        final int NUM_EPOCHS = 30; // change it to 30!
         double avg = 0;
         for (int i=1; i <= NUM_EPOCHS; i++) {
             System.out.println("Random split: " + i);

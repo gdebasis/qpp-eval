@@ -21,7 +21,7 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
         int best_qppTopK = 0;
         double max_corr = -1;
         for (int qppTopK: qppTopKChoices) {
-            System.out.println(String.format("Executing NQC (%d)", qppTopK));
+            System.out.println(String.format("Executing QPP Method %s (%d)", qppMethod.name(), qppTopK));
             double corr = computeCorrelation(trainQueries, qppMethod, qppTopK);
             if (corr > max_corr) {
                 max_corr = corr;
@@ -54,7 +54,7 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
             };
 
             for (QPPMethod qppMethod: qppMethods) {
-                System.out.println("Getting results for QPP method " + qppMethod);
+                System.out.println("Getting results for QPP method " + qppMethod.name());
                 TrainTestGridWorkflow trainTestGridWorkflow = new TrainTestGridWorkflow(qppMethod, queryFile, resFile);
                 trainTestGridWorkflow.averageAcrossEpochs();
             }
