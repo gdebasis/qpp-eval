@@ -19,7 +19,7 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
     public int calibrateTopK(List<TRECQuery> trainQueries) {
         final int[] qppTopKChoices = {10, 20, 30, 40, 50};
         int best_qppTopK = 0;
-        double max_corr = 0;
+        double max_corr = -1;
         for (int qppTopK: qppTopKChoices) {
             System.out.println(String.format("Executing NQC (%d)", qppTopK));
             double corr = computeCorrelation(trainQueries, qppMethod, qppTopK);
@@ -43,9 +43,9 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
     }
 
     public static void main(String[] args) {
-        final String queryFile = "data/topics.robust.all";
-        final String resFile = "bm25.robust.res";
-        Settings.init("qpp.properties");
+        final String queryFile = "data/trecdl1920.queries";
+        final String resFile = "msmarco_runs/colbert.reranked.res.trec";
+        Settings.init("msmarco.properties");
 
         try {
             QPPMethod[] qppMethods = {

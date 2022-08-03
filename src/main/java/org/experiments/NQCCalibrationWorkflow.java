@@ -42,7 +42,7 @@ public class NQCCalibrationWorkflow {
         qppEvaluator = new QPPEvaluator(
                 Settings.getProp(),
                 Settings.getCorrelationMetric(), Settings.getSearcher(), Settings.getNumWanted());
-        queries = qppEvaluator.constructQueries(queryFile);
+        queries = qppEvaluator.constructQueries(queryFile, Settings.tsvMode);
         evaluator = qppEvaluator.executeQueries(queries, sim, Settings.getNumWanted(), Settings.getQrelsFile(), Settings.RES_FILE, topDocsMap);
     }
 
@@ -50,7 +50,7 @@ public class NQCCalibrationWorkflow {
         qppEvaluator = new QPPEvaluator(
                 Settings.getProp(),
                 Settings.getCorrelationMetric(), Settings.getSearcher(), Settings.getNumWanted());
-        queries = qppEvaluator.constructQueries(queryFile);
+        queries = qppEvaluator.constructQueries(queryFile, Settings.tsvMode);
         topDocsMap = loadResFile(new File(resFile));
         System.out.println("#### : " + topDocsMap.size());
         evaluator = qppEvaluator.executeDummy(queries, sim,
