@@ -21,25 +21,6 @@ import java.util.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import org.correlation.PearsonCorrelation;
 
-class TrainTestInfo {
-    List<TRECQuery> train;
-    List<TRECQuery> test;
-    static final int SEED = 31415;
-    static Random r = new Random(SEED);
-
-    TrainTestInfo(List<TRECQuery> parent, float trainRatio) {
-        List<TRECQuery> listToShuffle = new ArrayList<>(parent);
-        Collections.shuffle(listToShuffle); // shuffle the copy!
-
-        int splitPoint = (int)(trainRatio * listToShuffle.size());
-        train = listToShuffle.subList(0, splitPoint);
-        test = listToShuffle.subList(splitPoint, listToShuffle.size());
-    }
-
-    List<TRECQuery> getTrain() { return train; }
-    List<TRECQuery> getTest() { return test; }
-}
-
 public class NQCCalibrationWorkflow {
     Similarity sim = new LMDirichletSimilarity(1000);
     protected Map<String, TopDocs> topDocsMap = new HashMap<>();
@@ -128,30 +109,29 @@ public class NQCCalibrationWorkflow {
         return new TopDocs(new TotalHits(nret, TotalHits.Relation.EQUAL_TO), sd);
     }
 
-    public double computeCorrelation(List<TRECQuery> queries, QPPMethod qppMethod) {
-        final int qppTopK = Settings.getQppTopK();
+    public double computeCorrelation(List<TRECQuery> queries, QPPMethod qppMethod, int qppTopK) {
         int numQueries = queries.size();
         double[] qppEstimates = new double[numQueries]; // stores qpp estimates for the list of input queries
         double[] evaluatedMetricValues = new double[numQueries]; // stores GTs (AP/nDCG etc.) for the list of input queries
         int i = 0;
 
         for (TRECQuery query : queries) {
-//            RetrievedResults rr = evaluator.getRetrievedResultsForQueryId(query.id);
             RetrievedResults rr = null;
             TopDocs topDocs = topDocsMap.get(query.id);
             evaluatedMetricValues[i] = evaluator.compute(query.id, Metric.AP);
+            rr = new RetrievedResults(query.id, topDocs); // this has to be set with the topdocs
             qppEstimates[i] = (float)qppMethod.computeSpecificity(
                     query.getLuceneQueryObj(), rr, topDocs, qppTopK);
             i++;
         }
 
-//        double corr = new KendalCorrelation().correlation(evaluatedMetricValues, qppEstimates);
-//        System.out.println(String.format("Kendall's = %.4f", corr));
-//        
         double corr = new PearsonCorrelation().correlation(evaluatedMetricValues, qppEstimates);
         System.out.println(String.format("Pearson's = %.4f", corr));
-        
         return corr;
+    }
+
+    public double computeCorrelation(List<TRECQuery> queries, QPPMethod qppMethod) {
+        return computeCorrelation(queries, qppMethod, Settings.getQppTopK());
     }
     
     public float[] calibrateParams(List<TRECQuery> trainQueries) {

@@ -89,6 +89,10 @@ public class Settings {
     }
 
     static public void init(String propFile) {
+        init(propFile, false);
+    }
+
+    static public void init(String propFile, boolean initMap) {
         if (initialized)
             return;
 
@@ -103,9 +107,11 @@ public class Settings {
             searcher = new IndexSearcher(reader);
             numWanted = Integer.parseInt(prop.getProperty("retrieve.num_wanted", "100"));
 
-            System.out.println("Loading the map of Doc-Id strings and Lucene integer offsets in memory...");
-            constructDocId2OffsetMap();
-            System.out.println("Loaded the map of Doc-Id strings and Lucene integer offsets in memory...");
+            if (initMap) {
+                System.out.println("Loading the map of Doc-Id strings and Lucene integer offsets in memory...");
+                constructDocId2OffsetMap();
+                System.out.println("Loaded the map of Doc-Id strings and Lucene integer offsets in memory...");
+            }
 
             minDepth = Integer.parseInt(prop.getProperty("pool.mindepth", "20"));
             maxDepth = Integer.parseInt(prop.getProperty("pool.maxdepth", "50"));
@@ -199,6 +205,9 @@ public class Settings {
     }
 
     public static String getDocIdFromOffset_Mem(int docOffset) {
+        if (offset2DocIdMap.size()==0)
+            return getDocIdFromOffset(docOffset);
+
         return offset2DocIdMap.get(docOffset);
     }
 
@@ -213,6 +222,9 @@ public class Settings {
     }
 
     public static int getDocOffsetFromId_Mem(String docId) {
+        if (docId2OffsetMap.size()==0)
+            return getDocOffsetFromId(docId);
+
         Integer offset = docId2OffsetMap.get(docId);
         return offset==null? -1 : offset;
     }

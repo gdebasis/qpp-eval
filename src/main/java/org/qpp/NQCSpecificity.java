@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class NQCSpecificity extends BaseIDFSpecificity {
-
     public NQCSpecificity(IndexSearcher searcher) {
         super(searcher);
     }
