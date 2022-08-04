@@ -171,7 +171,7 @@ public class NQCCalibrationWorkflow {
     }
 
     public void averageAcrossEpochs() {
-        final int NUM_EPOCHS = 30; // change it to 30!
+        final int NUM_EPOCHS = 5; // change it to 30!
         double avg = 0;
         for (int i=1; i <= NUM_EPOCHS; i++) {
             System.out.println("Random split: " + i);

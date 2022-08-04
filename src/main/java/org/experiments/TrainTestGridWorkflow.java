@@ -48,9 +48,8 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
         try {
             QPPMethod[] qppMethods = {
                     //new NQCSpecificity(Settings.getSearcher()),
-                    new WIGSpecificity(Settings.getSearcher()),
-                    //new OddsRatioSpecificity(Settings.getSearcher(), 0.1f), // 10% as top and bottom
-                    //new OddsRatioSpecificity(Settings.getSearcher(), 0.2f), // 20% as top and bottom
+                    //new WIGSpecificity(Settings.getSearcher()),
+                    new OddsRatioSpecificity(Settings.getSearcher(), 0.2f), // 20% as top and bottom
             };
 
             for (QPPMethod qppMethod: qppMethods) {
