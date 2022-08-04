@@ -21,6 +21,7 @@ public class OddsRatioSpecificity extends BaseIDFSpecificity {
 
     @Override
     public double computeSpecificity(Query q, RetrievedResults retInfo, TopDocs topDocs, int k) {
+        k = Math.min(k,topDocs.scoreDocs.length);
         int topK = (int)(p*k);
         int bottomK = topK;
 
