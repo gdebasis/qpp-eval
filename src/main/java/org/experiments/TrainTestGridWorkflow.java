@@ -31,9 +31,13 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
 
     public double epoch() {
         final float TRAIN_RATIO = 0.5f;
+        int tuned_topk = 0;
+
         TrainTestInfo trainTestInfo = new TrainTestInfo(queries, TRAIN_RATIO);
-        int tuned_topk = calibrateTopK(trainTestInfo.getTrain());
-        System.out.println("Optimal top-k = " + tuned_topk);
+        if (!qppMethod.name().equals("avgidf")) { // nothing to tune for pre-ret methods!
+            tuned_topk = calibrateTopK(trainTestInfo.getTrain());
+            System.out.println("Optimal top-k = " + tuned_topk);
+        }
         double corr = computeCorrelation(trainTestInfo.getTest(), qppMethod, tuned_topk);
         System.out.println("Test set correlation = " + corr);
         return corr;
@@ -41,15 +45,16 @@ public class TrainTestGridWorkflow extends NQCCalibrationWorkflow {
 
     public static void main(String[] args) {
         final String queryFile = "data/trecdl1920.queries";
-        final String resFile = "msmarco_runs/colbert.reranked.res.trec";
-        //final String resFile = "msmarco_runs/trecdl.monot5.rr.pos-scores.res";
+        //final String resFile = "msmarco_runs/colbert.reranked.res.trec";
+        final String resFile = "msmarco_runs/trecdl.monot5.rr.pos-scores.res";
         Settings.init("msmarco.properties");
 
         try {
             QPPMethod[] qppMethods = {
+                    new AvgIDFSpecificity(Settings.getSearcher()),
                     //new NQCSpecificity(Settings.getSearcher()),
                     //new WIGSpecificity(Settings.getSearcher()),
-                    new OddsRatioSpecificity(Settings.getSearcher(), 0.2f), // 20% as top and bottom
+                    //new OddsRatioSpecificity(Settings.getSearcher(), 0.2f), // 20% as top and bottom
             };
 
             for (QPPMethod qppMethod: qppMethods) {
