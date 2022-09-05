@@ -1,5 +1,6 @@
 package org.experiments;
 
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
@@ -10,6 +11,7 @@ import org.evaluator.RetrievedResults;
 import org.qpp.NQCCalibratedSpecificity;
 import org.qpp.NQCSpecificity;
 import org.qpp.QPPMethod;
+import org.qpp.WIGSpecificity;
 import org.trec.TRECQuery;
 
 import java.util.HashMap;
@@ -35,6 +37,7 @@ public class SimpleQppEvalFlow {
             //NQCCalibratedSpecificity qppMethod = new NQCCalibratedSpecificity(loader.getSearcher());
             //qppMethod.setParameters(2, 2, 0.5f);
             NQCSpecificity qppMethod = new NQCSpecificity(Settings.getSearcher());
+            //WIGSpecificity qppMethod = new WIGSpecificity(Settings.getSearcher());
             Similarity sim = new LMDirichletSimilarity(1000);
 
             final int nwanted = Settings.getNumWanted();
@@ -60,8 +63,25 @@ public class SimpleQppEvalFlow {
                 System.out.println(String.format("%s: AP = %.4f, QPP = %.4f", query.id, evaluatedMetricValues[i], qppEstimates[i]));
                 i++;
             }
-            double corr = new KendalCorrelation().correlation(evaluatedMetricValues, qppEstimates);
-            System.out.println(String.format("Kendall's = %.4f", corr));
+            double pearsons = new PearsonsCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+            double kendals = new KendalCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+
+            boolean ref, pred;
+            int correct = 0;
+            int numpairs = 0;
+            for (int j=0; j < evaluatedMetricValues.length-1; j++) {
+                for (int k=j+1; k < evaluatedMetricValues.length; k++) {
+                    ref = evaluatedMetricValues[j] < evaluatedMetricValues[k];
+                    pred = qppEstimates[j] < qppEstimates[k];
+                    correct += ref && pred? 1: 0;
+                    numpairs++;
+                }
+            }
+            System.out.println(numpairs);
+            System.out.println(String.format("acc = %.4f, r = %.4f, tau = %.4f",
+                    correct/(float)(numpairs),
+                    pearsons, kendals));
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
