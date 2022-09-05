@@ -19,25 +19,26 @@ import java.util.Map;
 public class SimpleQppEvalFlow {
 
     public static void main(String[] args) {
-        final String queryFile = "data/topics.robust.all";
+        final String queryFile = "data/topics.351-400.xml";
         final String resFile = "data/lmdir.all";
-        final String qrelsFile = "data/qrels.robust.all";
+        final String qrelsFile = "data/qrels.trec7.adhoc";
 
         try {
-            SettingsLoader loader = new SettingsLoader("init.properties");
+            //SettingsLoader loader = new SettingsLoader("init.properties");
+            Settings.init("init.properties");
 
             QPPEvaluator qppEvaluator = new QPPEvaluator(
-                    loader.getProp(),
-                    loader.getCorrelationMetric(), loader.getSearcher(), loader.getNumWanted());
+                    Settings.getProp(),
+                    Settings.getCorrelationMetric(), Settings.getSearcher(), Settings.getNumWanted());
             List<TRECQuery> queries = qppEvaluator.constructQueries(queryFile);
 
-            NQCCalibratedSpecificity qppMethod = new NQCCalibratedSpecificity(loader.getSearcher());
-            qppMethod.setParameters(2, 2, 0.5f);
-            //NQCSpecificity qppMethod = new NQCSpecificity(loader.getSearcher());
+            //NQCCalibratedSpecificity qppMethod = new NQCCalibratedSpecificity(loader.getSearcher());
+            //qppMethod.setParameters(2, 2, 0.5f);
+            NQCSpecificity qppMethod = new NQCSpecificity(Settings.getSearcher());
             Similarity sim = new LMDirichletSimilarity(1000);
 
-            final int nwanted = loader.getNumWanted();
-            final int qppTopK = loader.getQppTopK();
+            final int nwanted = Settings.getNumWanted();
+            final int qppTopK = Settings.getQppTopK();
 
             Map<String, TopDocs> topDocsMap = new HashMap<>();
             Evaluator evaluator = qppEvaluator.executeQueries(queries, sim, nwanted, qrelsFile, resFile, topDocsMap);

@@ -50,6 +50,7 @@ class AllRelRcds {
         perQueryRels = new HashMap<>();
         totalNumRel = 0;
         load();
+        System.out.println(String.format("Total num rel = %d", perQueryRels.size()));
     }
 
     public AllRelRcds(String qrelsFile, List<IRSystem> systems) {
