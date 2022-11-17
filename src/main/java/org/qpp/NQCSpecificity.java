@@ -44,12 +44,15 @@ public class NQCSpecificity extends BaseIDFSpecificity {
         return computeNQC(q, topDocs.getRSVs(k), k);
     }
 
-    public double computeNQC(Query q, TopDocs topDocs, int k) {
-        double[] rsvs = Arrays.stream(topDocs.scoreDocs)
+    double[] getRSVs(TopDocs topDocs) {
+        return Arrays.stream(topDocs.scoreDocs)
                 .map(scoreDoc -> scoreDoc.score)
                 .mapToDouble(d -> d)
                 .toArray();
-        return computeNQC(q, rsvs, k);
+    }
+
+    public double computeNQC(Query q, TopDocs topDocs, int k) {
+        return computeNQC(q, getRSVs(topDocs), k);
     }
 
     @Override

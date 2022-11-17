@@ -141,7 +141,7 @@ public class DepthPoolingWorkflow extends NQCCalibrationWorkflow  {
 
         double[] qppEstimates;
         if (Settings.getQppScoresFile().length()>0) {
-            // there's a QPP scores file we should read from... so, what're u waiting for?
+            // there's a QPP scores file we should read from...
             // the order in which the QPP scores are stored MUST be identical to the order
             // in which the queries appear in the queries file!
             List<String> qppScores = FileUtils.readLines(

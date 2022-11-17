@@ -8,10 +8,7 @@ import org.correlation.KendalCorrelation;
 import org.evaluator.Evaluator;
 import org.evaluator.Metric;
 import org.evaluator.RetrievedResults;
-import org.qpp.NQCCalibratedSpecificity;
-import org.qpp.NQCSpecificity;
-import org.qpp.QPPMethod;
-import org.qpp.WIGSpecificity;
+import org.qpp.*;
 import org.trec.TRECQuery;
 
 import java.util.HashMap;
@@ -36,8 +33,10 @@ public class SimpleQppEvalFlow {
 
             //NQCCalibratedSpecificity qppMethod = new NQCCalibratedSpecificity(loader.getSearcher());
             //qppMethod.setParameters(2, 2, 0.5f);
-            NQCSpecificity qppMethod = new NQCSpecificity(Settings.getSearcher());
+            //NQCSpecificity qppMethod = new NQCSpecificity(Settings.getSearcher());
             //WIGSpecificity qppMethod = new WIGSpecificity(Settings.getSearcher());
+            UEFSpecificity qppMethod = new UEFSpecificity(new WIGSpecificity(Settings.getSearcher()));
+
             Similarity sim = new LMDirichletSimilarity(1000);
 
             final int nwanted = Settings.getNumWanted();
