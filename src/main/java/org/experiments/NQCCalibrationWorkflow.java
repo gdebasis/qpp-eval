@@ -1,6 +1,8 @@
 package org.experiments;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
@@ -124,31 +126,53 @@ public class NQCCalibrationWorkflow {
             i++;
         }
 
-        double corr = new PearsonCorrelation().correlation(evaluatedMetricValues, qppEstimates);
-        System.out.println(String.format("Pearson's = %.4f", corr));
-        return corr;
+        double p_corr = new PearsonCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+        System.out.println(String.format("P-rho = %.4f", p_corr));
+        return p_corr;
     }
 
-    public double computeCorrelation(List<TRECQuery> queries, QPPMethod qppMethod) {
-        return computeCorrelation(queries, qppMethod, Settings.getQppTopK());
+    public Pair<Double, Double> computeCorrelationPairs(List<TRECQuery> queries, QPPMethod qppMethod, int qppTopK) {
+        int numQueries = queries.size();
+        double[] qppEstimates = new double[numQueries]; // stores qpp estimates for the list of input queries
+        double[] evaluatedMetricValues = new double[numQueries]; // stores GTs (AP/nDCG etc.) for the list of input queries
+        int i = 0;
+
+        for (TRECQuery query : queries) {
+            RetrievedResults rr = null;
+            TopDocs topDocs = topDocsMap.get(query.id);
+            evaluatedMetricValues[i] = evaluator.compute(query.id, Metric.AP);
+            rr = new RetrievedResults(query.id, topDocs); // this has to be set with the topdocs
+            qppEstimates[i] = (float)qppMethod.computeSpecificity(
+                    query.getLuceneQueryObj(), rr, topDocs, qppTopK);
+            i++;
+        }
+
+        double p_corr = new PearsonCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+        double k_corr = new KendallsCorrelation().correlation(evaluatedMetricValues, qppEstimates);
+        System.out.println(String.format("P-rho = %.4f, K-tau = %.4f", p_corr, k_corr));
+        return Pair.of(p_corr, k_corr);
+    }
+
+    public Pair<Double, Double> computeCorrelation(List<TRECQuery> queries, QPPMethod qppMethod) {
+        return computeCorrelationPairs(queries, qppMethod, Settings.getQppTopK());
     }
     
-    public float[] calibrateParams(List<TRECQuery> trainQueries) {
+    public Pair<Double, Double> calibrateParams(List<TRECQuery> trainQueries) {
         final int qppTopK = Settings.getQppTopK();
         final float[] alpha_choices = {/*0.25f, 0.5f, 1.0f,*/ 1.5f, /*2.0f*/};
         final float[] beta_choices = {0.25f, /*0.5f, 1.0f, 1.5f, 2.0f*/};
         final float[] gamma_choices = {/*0.25f,*/ 0.5f /*, 1.0f, 1.5f, 2.0f*/};
         float[] best_choice = new float[3]; // best (alpha, beta, gamma)
-        double max_corr = 0;
+        Pair<Double, Double> max_corr = Pair.of(0.0, 0.0);
 
         for (float alpha: alpha_choices) {
             for (float beta: beta_choices) {
                 for (float gamma: gamma_choices) {
                     qppMethod = new NQCSpecificityCalibrated(Settings.getSearcher(), alpha, beta, gamma);
                     System.out.println(String.format("Executing NQC (%.2f, %.2f, %.2f)", alpha, beta, gamma));
-                    double corr = computeCorrelation(trainQueries, qppMethod);
-                    if (corr > max_corr) {
-                        max_corr = corr;
+                    Pair<Double, Double> corrs = computeCorrelation(trainQueries, qppMethod);
+                    if (corrs.getLeft().doubleValue() > max_corr.getLeft().doubleValue()) {
+                        max_corr = corrs;
                         best_choice[0] = alpha;
                         best_choice[1] = beta;
                         best_choice[2] = gamma;
@@ -156,28 +180,47 @@ public class NQCCalibrationWorkflow {
                 }
             }
         }
-        return best_choice;
+        return max_corr;
     }
 
     public double epoch() {
         final float TRAIN_RATIO = 0.5f;
         TrainTestInfo trainTestInfo = new TrainTestInfo(queries, TRAIN_RATIO);
-        float[] tuned_params = calibrateParams(trainTestInfo.getTrain());
+        Pair<Double, Double> correlations = calibrateParams(trainTestInfo.getTrain());
+
+        /*
         QPPMethod qppMethod = new NQCSpecificityCalibrated(
                             Settings.getSearcher(),
-                            tuned_params[0], tuned_params[1], tuned_params[2]);
+                            tuned_params[0], tuned_params[1], tuned_params[2]); */
+        // computeCorrelation(queries, qppMethod);
 
-        return computeCorrelation(queries, qppMethod);
+        return correlations.getLeft();
+    }
+
+    public Pair<Double, Double> epochWithPairs() {
+        final float TRAIN_RATIO = 0.5f;
+        TrainTestInfo trainTestInfo = new TrainTestInfo(queries, TRAIN_RATIO);
+        Pair<Double, Double> correlations = calibrateParams(trainTestInfo.getTrain());
+
+        /*
+        QPPMethod qppMethod = new NQCSpecificityCalibrated(
+                            Settings.getSearcher(),
+                            tuned_params[0], tuned_params[1], tuned_params[2]); */
+        // computeCorrelation(queries, qppMethod);
+
+        return correlations;
     }
 
     public void averageAcrossEpochs() {
-        final int NUM_EPOCHS = 30; // change it to 30!
-        double avg = 0;
+        final int NUM_EPOCHS = 3; // change it to 30!
+        double p_avg = 0, k_avg = 0;
         for (int i=1; i <= NUM_EPOCHS; i++) {
             System.out.println("Random split: " + i);
-            avg += epoch();
+            Pair<Double, Double> corrs = epochWithPairs();
+            p_avg += corrs.getLeft();
+            k_avg += corrs.getRight();
         }
-        System.out.println(String.format("Result over %d runs of tuned 50:50 splits = %.4f", NUM_EPOCHS, avg/NUM_EPOCHS));
+        System.out.println(String.format("Result over %d runs of tuned 50:50 splits = (%.4f, %.4f)", NUM_EPOCHS, p_avg/NUM_EPOCHS, k_avg/NUM_EPOCHS));
     }
 
     public static void main(String[] args) {
